@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace PlinCode\IstatGeographical\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class IstatGeographicalCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'laravel-istat-geographical-dataset';
 
     public $description = 'My command';
 
