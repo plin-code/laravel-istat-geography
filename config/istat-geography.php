@@ -24,7 +24,7 @@ return [
     ],
 
     'import' => [
-        'csv_url' => env('ISTAT_CSV_URL', 'https://www.istat.it/storage/codici-unita-amministrative/Elenco-comuni-italiani.csv'),
-        'temp_filename' => env('ISTAT_TEMP_FILENAME', 'istat_municipalities.csv'),
+        'csv_url' => 'https://www.istat.it/storage/codici-unita-amministrative/Elenco-comuni-italiani.csv',
+        'temp_filename' => 'istat_municipalities.csv',
     ],
 ];
