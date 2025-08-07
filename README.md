@@ -1,5 +1,9 @@
 # Laravel ISTAT Geography
 
+<p align="center">
+  <img src="art/laravel-istat-geography.png" alt="Laravel ISTAT Geography" width="600">
+</p>
+
 A Laravel package for importing and managing Italian geographical data from ISTAT.
 
 ## Features
