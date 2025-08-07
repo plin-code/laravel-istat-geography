@@ -116,7 +116,7 @@ final class GeographyImportService
     private function prepareCsvReader(string $path): Reader
     {
         $csv = Reader::createFromPath($path, 'r');
-        
+
         // Configura il reader per gestire l'encoding del file ISTAT
         $csv->appendStreamFilterOnRead('convert.iconv.ISO-8859-15/UTF-8');
         $csv->setDelimiter(';');
