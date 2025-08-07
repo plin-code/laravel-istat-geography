@@ -1,5 +1,5 @@
 <?php
 
-use PlinCode\IstatGeographical\Tests\TestCase;
+use PlinCode\IstatGeography\Tests\TestCase;
 
 uses(TestCase::class)->in(__DIR__);

@@ -1,60 +1,176 @@
-# this is a temp placeholder
+# Laravel ISTAT Geography
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/danielebarbaro/laravel-istat-geographical-dataset.svg?style=flat-square)](https://packagist.org/packages/danielebarbaro/laravel-istat-geographical-dataset)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/danielebarbaro/laravel-istat-geographical-dataset/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/danielebarbaro/laravel-istat-geographical-dataset/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/danielebarbaro/laravel-istat-geographical-dataset/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/danielebarbaro/laravel-istat-geographical-dataset/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/danielebarbaro/laravel-istat-geographical-dataset.svg?style=flat-square)](https://packagist.org/packages/danielebarbaro/laravel-istat-geographical-dataset)
+A Laravel package for importing and managing Italian geographical data from ISTAT.
 
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
+## Features
 
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/laravel-istat-geographical-dataset.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/laravel-istat-geographical-dataset)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+- Automatic import of regions, provinces, and municipalities from ISTAT
+- Eloquent models with hierarchical relationships
+- Artisan command for importing
+- Support for UUID and soft deletes
+- Configurable via configuration file
 
 ## Installation
 
-You can install the package via composer:
-
 ```bash
-composer require danielebarbaro/laravel-istat-geographical-dataset
+composer require plin-code/laravel-istat-geographical
 ```
 
-You can publish and run the migrations with:
+## Configuration
+
+Publish the configuration file:
 
 ```bash
-php artisan vendor:publish --tag="laravel-istat-geographical-dataset-migrations"
+php artisan vendor:publish --provider="PlinCode\IstatGeography\IstatGeographyServiceProvider"
+```
+
+## Migrations
+
+Run the migrations to create the necessary tables:
+
+```bash
 php artisan migrate
-```
-
-You can publish the config file with:
-
-```bash
-php artisan vendor:publish --tag="laravel-istat-geographical-dataset-config"
-```
-
-This is the contents of the published config file:
-
-```php
-return [
-];
-```
-
-Optionally, you can publish the views using
-
-```bash
-php artisan vendor:publish --tag="laravel-istat-geographical-dataset-views"
 ```
 
 ## Usage
 
-```php
-$istatGeographical = new PlinCode\IstatGeographical();
-echo $istatGeographical->echoPhrase('Hello, PlinCode!');
+### Data Import
+
+To import all geographical data from ISTAT:
+
+```bash
+php artisan istat:geography:import
 ```
+
+### Models
+
+The package provides three Eloquent models:
+
+#### Region
+```php
+use PlinCode\IstatGeography\Models\Geography\Region;
+
+$region = Region::where('name', 'Piemonte')->first();
+$provinces = $region->provinces;
+```
+
+#### Province
+```php
+use PlinCode\IstatGeography\Models\Geography\Province;
+
+$province = Province::where('code', 'TO')->first();
+$municipalities = $province->municipalities;
+$region = $province->region;
+```
+
+#### Municipality
+```php
+use PlinCode\IstatGeography\Models\Geography\Municipality;
+
+$municipality = Municipality::where('name', 'Torino')->first();
+$province = $municipality->province;
+```
+
+### Integration Example in Main Project
+
+If you want to use the package models in your main project, you can extend them:
+
+```php
+// app/Models/Region.php
+namespace App\Models;
+
+use PlinCode\IstatGeography\Models\Geography\Region as BaseRegion;
+
+class Region extends BaseRegion
+{
+    // Add your project-specific logic here
+    public function customMethod()
+    {
+        return $this->provinces()->count();
+    }
+}
+```
+
+```php
+// app/Models/Province.php
+namespace App\Models;
+
+use PlinCode\IstatGeography\Models\Geography\Province as BaseProvince;
+
+class Province extends BaseProvince
+{
+    // Add your project-specific logic here
+}
+```
+
+```php
+// app/Models/Municipality.php
+namespace App\Models;
+
+use PlinCode\IstatGeography\Models\Geography\Municipality as BaseMunicipality;
+
+class Municipality extends BaseMunicipality
+{
+    // Add your project-specific logic here
+}
+```
+
+### Replacing Existing Command
+
+If you already have a `geography:import` command in your project, you can replace it with the package's command:
+
+```php
+// In app/Console/Kernel.php or in your existing command
+Artisan::command('geography:import', function () {
+    $this->info('Starting geographical data import...');
+
+    try {
+        $count = \PlinCode\IstatGeography\Facades\IstatGeography::import();
+        $this->info("Import completed successfully! Imported {$count} municipalities.");
+    } catch (\Exception $e) {
+        $this->error('Error during import: ' . $e->getMessage());
+    }
+})->purpose('Import regions, provinces and municipalities from ISTAT');
+```
+
+## Configuration
+
+The `config/istat-geography.php` file allows you to customize:
+
+- Table names
+- Model classes
+- ISTAT CSV URL
+- Temporary file name
+
+## Database Structure
+
+### Regions
+- `id` (UUID, primary key)
+- `name` (string)
+- `istat_code` (string, unique)
+- `created_at`, `updated_at`, `deleted_at`
+
+### Provinces
+- `id` (UUID, primary key)
+- `region_id` (UUID, foreign key)
+- `name` (string)
+- `code` (string, unique)
+- `istat_code` (string, unique)
+- `created_at`, `updated_at`, `deleted_at`
+
+### Municipalities
+- `id` (UUID, primary key)
+- `province_id` (UUID, foreign key)
+- `name` (string)
+- `istat_code` (string, unique)
+- `created_at`, `updated_at`, `deleted_at`
+
+## Relationships
+
+- `Region` → `hasMany` → `Province`
+- `Province` → `belongsTo` → `Region`
+- `Province` → `hasMany` → `Municipality`
+- `Municipality` → `belongsTo` → `Province`
 
 ## Testing
 
@@ -62,22 +178,13 @@ echo $istatGeographical->echoPhrase('Hello, PlinCode!');
 composer test
 ```
 
-## Changelog
-
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
-
 ## Contributing
 
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
-
-## Security Vulnerabilities
-
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
-
-## Credits
-
-- [Daniele Barbaro](https://github.com/plin-code)
-- [All Contributors](../../contributors)
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 

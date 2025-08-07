@@ -1,10 +1,12 @@
 <?php
 
-namespace PlinCode\IstatGeographical\Tests;
+declare(strict_types=1);
+
+namespace PlinCode\IstatGeography\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use PlinCode\IstatGeographical\IstatGeographicalServiceProvider;
+use PlinCode\IstatGeography\IstatGeographyServiceProvider;
 
 class TestCase extends Orchestra
 {
@@ -13,25 +15,24 @@ class TestCase extends Orchestra
         parent::setUp();
 
         Factory::guessFactoryNamesUsing(
-            fn (string $modelName) => 'PlinCode\\IstatGeographical\\Database\\Factories\\'.class_basename($modelName).'Factory'
+            fn (string $modelName) => 'PlinCode\\IstatGeography\\Database\\Factories\\'.class_basename($modelName).'Factory'
         );
     }
 
     protected function getPackageProviders($app)
     {
         return [
-            IstatGeographicalServiceProvider::class,
+            IstatGeographyServiceProvider::class,
         ];
+    }
+
+    protected function defineDatabaseMigrations()
+    {
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
     }
 
     public function getEnvironmentSetUp($app)
     {
         config()->set('database.default', 'testing');
-
-        /*
-         foreach (\Illuminate\Support\Facades\File::allFiles(__DIR__ . '/database/migrations') as $migration) {
-            (include $migration->getRealPath())->up();
-         }
-         */
     }
 }
