@@ -4,17 +4,50 @@ A Laravel package for importing and managing Italian geographical data from ISTA
 
 ## Features
 
-- Automatic import of regions, provinces, and municipalities from ISTAT
-- Eloquent models with hierarchical relationships
-- Artisan command for importing
-- Support for UUID and soft deletes
-- Configurable via configuration file
+- 🇮🇹 Import Italian regions, provinces, and municipalities from ISTAT
+- 📊 Daily CSV caching to avoid unnecessary requests
+- 🔗 Eloquent models with hierarchical relationships
+- ⚡ Artisan command for easy data import
+- 🔧 Fully configurable via configuration file
+- 🆔 UUID primary keys and soft deletes support
+- 🧪 Comprehensive test suite with mocked HTTP requests
+
+## Requirements
+
+- PHP 8.3+
+- Laravel 11.0+ or 12.0+
+- league/csv 9.0+
+- guzzlehttp/guzzle 7.0+
 
 ## Installation
 
 ```bash
-composer require plin-code/laravel-istat-geographical
+composer require plin-code/laravel-istat-geography
 ```
+
+## Quick Start
+
+1. **Install the package:**
+```bash
+composer require plin-code/laravel-istat-geography
+```
+
+2. **Publish the configuration:**
+```bash
+php artisan vendor:publish --provider="PlinCode\IstatGeography\IstatGeographyServiceProvider"
+```
+
+3. **Run migrations:**
+```bash
+php artisan migrate
+```
+
+4. **Import the data:**
+```bash
+php artisan geography:import
+```
+
+That's it! You now have all Italian geographical data in your database.
 
 ## Configuration
 
@@ -137,10 +170,30 @@ Artisan::command('geography:import', function () {
 
 The `config/istat-geography.php` file allows you to customize:
 
-- Table names
-- Model classes
-- ISTAT CSV URL
-- Temporary file name
+- **Table names**: Customize the database table names
+- **Model classes**: Use your own model classes by extending the base ones
+- **CSV URL**: Change the ISTAT data source URL
+- **Temporary file name**: Customize the cache file name
+
+### Example Configuration
+```php
+return [
+    'tables' => [
+        'regions' => 'my_regions',
+        'provinces' => 'my_provinces', 
+        'municipalities' => 'my_municipalities',
+    ],
+    'models' => [
+        'region' => \App\Models\Region::class,
+        'province' => \App\Models\Province::class,
+        'municipality' => \App\Models\Municipality::class,
+    ],
+    'import' => [
+        'csv_url' => 'https://custom-url.com/data.csv',
+        'temp_filename' => 'my_istat_data.csv',
+    ],
+];
+```
 
 ## Database Structure
 
@@ -174,9 +227,24 @@ The `config/istat-geography.php` file allows you to customize:
 
 ## Testing
 
+Run the test suite:
+
 ```bash
 composer test
 ```
+
+The package includes:
+- ✅ Unit tests for models and relationships
+- ✅ Feature tests for the import service
+- ✅ Mocked HTTP requests (no external dependencies)
+- ✅ PHPStan static analysis
+- ✅ Pest PHP testing framework
+
+### Test Coverage
+- Models and their relationships
+- Import service with CSV processing
+- Artisan command functionality
+- Configuration handling
 
 ## Contributing
 
