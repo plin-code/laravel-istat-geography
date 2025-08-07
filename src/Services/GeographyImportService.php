@@ -6,7 +6,6 @@ namespace PlinCode\IstatGeography\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use League\Csv\Bom;
 use League\Csv\Exception;
 use League\Csv\InvalidArgument;
 use League\Csv\Reader;
@@ -117,7 +116,8 @@ final class GeographyImportService
     private function prepareCsvReader(string $path): Reader
     {
         $csv = Reader::createFromPath($path, 'r');
-        $csv->setOutputBOM(Bom::Utf8);
+        
+        // Configura il reader per gestire l'encoding del file ISTAT
         $csv->appendStreamFilterOnRead('convert.iconv.ISO-8859-15/UTF-8');
         $csv->setDelimiter(';');
         $csv->setHeaderOffset(0);

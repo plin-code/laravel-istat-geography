@@ -5,7 +5,7 @@ use PlinCode\IstatGeography\Models\Geography\Province;
 use PlinCode\IstatGeography\Models\Geography\Region;
 
 test('import command imports all geographical data', function () {
-    $this->artisan('istat:geography:import')
+    $this->artisan('geography:import')
         ->assertSuccessful();
 
     expect(Region::count())->toBeGreaterThan(0)

@@ -39,7 +39,7 @@ php artisan migrate
 To import all geographical data from ISTAT:
 
 ```bash
-php artisan istat:geography:import
+php artisan geography:import
 ```
 
 ### Models
