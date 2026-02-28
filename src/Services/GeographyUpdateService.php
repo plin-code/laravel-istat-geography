@@ -86,6 +86,34 @@ final class GeographyUpdateService
         ];
     }
 
+    public function applySuppressed(ComparisonResult $comparison, ?string $connection = null): array
+    {
+        $this->connection = $connection ?? config('database.default');
+
+        $suppressedRegions = $this->softDeleteRecords(
+            $comparison->regions->suppressed,
+            $this->regionModel
+        );
+
+        $suppressedProvinces = $this->softDeleteRecords(
+            $comparison->provinces->suppressed,
+            $this->provinceModel
+        );
+
+        $suppressedMunicipalities = $this->softDeleteRecords(
+            $comparison->municipalities->suppressed,
+            $this->municipalityModel
+        );
+
+        return [
+            'suppressed' => [
+                'regions' => $suppressedRegions,
+                'provinces' => $suppressedProvinces,
+                'municipalities' => $suppressedMunicipalities,
+            ],
+        ];
+    }
+
     private function updateModifiedRecords(array $modifiedRecords, string $modelClass): int
     {
         $count = 0;
@@ -112,6 +140,29 @@ final class GeographyUpdateService
 
             if ($record !== null) {
                 $record->update($updateData);
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    private function softDeleteRecords(array $suppressedRecords, string $modelClass): int
+    {
+        $count = 0;
+
+        foreach ($suppressedRecords as $data) {
+            $id = $data['id'];
+
+            /** @var Region|Province|Municipality $model */
+            $model = new $modelClass;
+            $record = $model
+                ->setConnection($this->connection)
+                ->withoutTrashed()
+                ->find($id);
+
+            if ($record !== null) {
+                $record->delete();
                 $count++;
             }
         }

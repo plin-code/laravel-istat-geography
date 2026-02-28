@@ -543,3 +543,229 @@ test('update service skips records with empty changes', function () {
     expect($region->name)->toBe('Piemonte')
         ->and($region->updated_at->equalTo($originalUpdatedAt))->toBeTrue();
 });
+
+test('update service soft-deletes suppressed region records', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+
+    $comparison = new ComparisonResult(
+        regions: new EntityComparisonResult(
+            new: [],
+            modified: [],
+            suppressed: [
+                '01' => ['id' => $region->id, 'name' => 'Piemonte'],
+            ]
+        ),
+        provinces: createEmptyEntityResult(),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applySuppressed($comparison);
+
+    expect($result['suppressed']['regions'])->toBe(1)
+        ->and($result['suppressed']['provinces'])->toBe(0)
+        ->and($result['suppressed']['municipalities'])->toBe(0);
+
+    // Verify the record was soft-deleted
+    expect(Region::withoutTrashed()->where('istat_code', '01')->exists())->toBeFalse()
+        ->and(Region::withTrashed()->where('istat_code', '01')->exists())->toBeTrue();
+});
+
+test('update service soft-deletes suppressed province records', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '001001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+
+    $comparison = new ComparisonResult(
+        regions: createEmptyEntityResult(),
+        provinces: new EntityComparisonResult(
+            new: [],
+            modified: [],
+            suppressed: [
+                '001' => ['id' => $province->id, 'name' => 'Torino'],
+            ]
+        ),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applySuppressed($comparison);
+
+    expect($result['suppressed']['provinces'])->toBe(1);
+
+    // Verify the record was soft-deleted
+    expect(Province::withoutTrashed()->where('istat_code', '001')->exists())->toBeFalse()
+        ->and(Province::withTrashed()->where('istat_code', '001')->exists())->toBeTrue();
+});
+
+test('update service soft-deletes suppressed municipality records', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '001001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    $municipality = Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '001001',
+        'province_id' => $province->id,
+    ]);
+
+    $comparison = new ComparisonResult(
+        regions: createEmptyEntityResult(),
+        provinces: createEmptyEntityResult(),
+        municipalities: new EntityComparisonResult(
+            new: [],
+            modified: [],
+            suppressed: [
+                '001001' => ['id' => $municipality->id, 'name' => 'Torino'],
+            ]
+        )
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applySuppressed($comparison);
+
+    expect($result['suppressed']['municipalities'])->toBe(1);
+
+    // Verify the record was soft-deleted
+    expect(Municipality::withoutTrashed()->where('istat_code', '001001')->exists())->toBeFalse()
+        ->and(Municipality::withTrashed()->where('istat_code', '001001')->exists())->toBeTrue();
+});
+
+test('update service returns correct counts when no suppressed records', function () {
+    $comparison = new ComparisonResult(
+        regions: createEmptyEntityResult(),
+        provinces: createEmptyEntityResult(),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applySuppressed($comparison);
+
+    expect($result['suppressed']['regions'])->toBe(0)
+        ->and($result['suppressed']['provinces'])->toBe(0)
+        ->and($result['suppressed']['municipalities'])->toBe(0);
+});
+
+test('update service does not cascade delete child records when suppressing parent', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '001001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    $municipality = Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '001001',
+        'province_id' => $province->id,
+    ]);
+
+    // Only suppress the province, not the municipality
+    $comparison = new ComparisonResult(
+        regions: createEmptyEntityResult(),
+        provinces: new EntityComparisonResult(
+            new: [],
+            modified: [],
+            suppressed: [
+                '001' => ['id' => $province->id, 'name' => 'Torino'],
+            ]
+        ),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $service->applySuppressed($comparison);
+
+    // Province should be soft-deleted
+    expect(Province::withoutTrashed()->where('istat_code', '001')->exists())->toBeFalse();
+
+    // But municipality should NOT be affected
+    expect(Municipality::withoutTrashed()->where('istat_code', '001001')->exists())->toBeTrue()
+        ->and($municipality->fresh()->province_id)->toBe($province->id);
+});
+
+test('update service preserves foreign key relationships when suppressing parent', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '001001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+
+    // Suppress the region
+    $comparison = new ComparisonResult(
+        regions: new EntityComparisonResult(
+            new: [],
+            modified: [],
+            suppressed: [
+                '01' => ['id' => $region->id, 'name' => 'Piemonte'],
+            ]
+        ),
+        provinces: createEmptyEntityResult(),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $service->applySuppressed($comparison);
+
+    // Province should still have the same region_id (FK intact)
+    $province->refresh();
+    expect($province->region_id)->toBe($region->id)
+        ->and(Province::withoutTrashed()->where('istat_code', '001')->exists())->toBeTrue();
+});
+
+test('update service soft-deletes multiple records of same type', function () {
+    $region1 = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $region2 = Region::create([
+        'name' => 'Lombardia',
+        'istat_code' => '02',
+    ]);
+
+    $comparison = new ComparisonResult(
+        regions: new EntityComparisonResult(
+            new: [],
+            modified: [],
+            suppressed: [
+                '01' => ['id' => $region1->id, 'name' => 'Piemonte'],
+                '02' => ['id' => $region2->id, 'name' => 'Lombardia'],
+            ]
+        ),
+        provinces: createEmptyEntityResult(),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applySuppressed($comparison);
+
+    expect($result['suppressed']['regions'])->toBe(2);
+
+    // Verify both records were soft-deleted
+    expect(Region::withoutTrashed()->count())->toBe(0)
+        ->and(Region::withTrashed()->count())->toBe(2);
+});

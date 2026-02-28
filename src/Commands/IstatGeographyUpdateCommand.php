@@ -44,8 +44,12 @@ class IstatGeographyUpdateCommand extends Command
         // Display modified records with details at -vv verbosity
         $this->displayModifiedRecords($comparison, $prefix);
 
+        // Display suppressed records
+        $this->displaySuppressedRecords($comparison, $prefix);
+
         $added = ['regions' => 0, 'provinces' => 0, 'municipalities' => 0];
         $modified = ['regions' => 0, 'provinces' => 0, 'municipalities' => 0];
+        $suppressed = ['regions' => 0, 'provinces' => 0, 'municipalities' => 0];
 
         if (! $isDryRun) {
             $addResult = $updateService->applyNew($comparison);
@@ -53,6 +57,9 @@ class IstatGeographyUpdateCommand extends Command
 
             $modifyResult = $updateService->applyModifications($comparison);
             $modified = $modifyResult['modified'];
+
+            $suppressResult = $updateService->applySuppressed($comparison);
+            $suppressed = $suppressResult['suppressed'];
         } else {
             $added = [
                 'regions' => $comparison->regions->countNew(),
@@ -64,11 +71,17 @@ class IstatGeographyUpdateCommand extends Command
                 'provinces' => $comparison->provinces->countModified(),
                 'municipalities' => $comparison->municipalities->countModified(),
             ];
+            $suppressed = [
+                'regions' => $comparison->regions->countSuppressed(),
+                'provinces' => $comparison->provinces->countSuppressed(),
+                'municipalities' => $comparison->municipalities->countSuppressed(),
+            ];
         }
 
         $totalAdded = $added['regions'] + $added['provinces'] + $added['municipalities'];
         $totalModified = $modified['regions'] + $modified['provinces'] + $modified['municipalities'];
-        $this->info($prefix."Update completed: {$totalAdded} added, {$totalModified} modified, 0 deleted");
+        $totalSuppressed = $suppressed['regions'] + $suppressed['provinces'] + $suppressed['municipalities'];
+        $this->info($prefix."Update completed: {$totalAdded} added, {$totalModified} modified, {$totalSuppressed} deleted");
 
         return self::SUCCESS;
     }
@@ -124,6 +137,25 @@ class IstatGeographyUpdateCommand extends Command
             $old = $change['old'] ?? 'null';
             $new = $change['new'] ?? 'null';
             $this->line($prefix."  {$field}: {$old} → {$new}");
+        }
+    }
+
+    private function displaySuppressedRecords(ComparisonResult $comparison, string $prefix): void
+    {
+        if (! $this->output->isVerbose()) {
+            return;
+        }
+
+        foreach ($comparison->regions->suppressed as $istatCode => $data) {
+            $this->line($prefix."Suppressed region: {$data['name']} (ISTAT: {$istatCode})");
+        }
+
+        foreach ($comparison->provinces->suppressed as $istatCode => $data) {
+            $this->line($prefix."Suppressed province: {$data['name']} (ISTAT: {$istatCode})");
+        }
+
+        foreach ($comparison->municipalities->suppressed as $istatCode => $data) {
+            $this->line($prefix."Suppressed municipality: {$data['name']} (ISTAT: {$istatCode})");
         }
     }
 }

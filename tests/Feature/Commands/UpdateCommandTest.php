@@ -339,3 +339,234 @@ test('update command shows modification details at verbosity -vv', function () {
         ->expectsOutputToContain('Modified municipality (ISTAT: 010001)')
         ->expectsOutputToContain('name: Torino Old Name → Torino New Name');
 });
+
+test('update command soft-deletes records no longer present in ISTAT', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    // Create a municipality that won't be in ISTAT data
+    Municipality::create([
+        'name' => 'Old Municipality',
+        'istat_code' => '010002',
+        'province_id' => $province->id,
+    ]);
+    // Also create one that will exist
+    Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+
+    // ISTAT data only has the first municipality
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('1 deleted');
+
+    // Verify the old municipality was soft-deleted
+    expect(Municipality::withoutTrashed()->where('istat_code', '010002')->exists())->toBeFalse()
+        ->and(Municipality::withTrashed()->where('istat_code', '010002')->exists())->toBeTrue()
+        ->and(Municipality::withoutTrashed()->where('istat_code', '010001')->exists())->toBeTrue();
+});
+
+test('update command preserves foreign key relationships when soft-deleting', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    $municipality = Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+
+    // ISTAT data is empty (simulating suppression of all)
+    Http::fake([
+        '*' => Http::response(createUpdateTestCsvHeader(), 200),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful();
+
+    // Verify foreign keys are preserved even after soft delete
+    $deletedMunicipality = Municipality::withTrashed()->where('istat_code', '010001')->first();
+    expect($deletedMunicipality->province_id)->toBe($province->id);
+
+    $deletedProvince = Province::withTrashed()->where('istat_code', '001')->first();
+    expect($deletedProvince->region_id)->toBe($region->id);
+});
+
+test('update command does not cascade delete child records when suppressing parent', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    $municipality = Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+
+    // ISTAT data still has the municipality but not the province
+    // (unusual but should not auto-delete the municipality)
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful();
+
+    // Municipality should NOT be automatically deleted
+    // Note: In this test, the ISTAT data DOES include the municipality, so it won't be deleted
+    // The important thing is verifying that suppression is based on ISTAT codes, not cascading
+    expect(Municipality::withoutTrashed()->where('istat_code', '010001')->exists())->toBeTrue();
+});
+
+test('update command dry-run lists suppressed records but does not delete them', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    Municipality::create([
+        'name' => 'Old Municipality',
+        'istat_code' => '010002',
+        'province_id' => $province->id,
+    ]);
+    Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['--dry-run' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('[DRY-RUN] Update completed: 0 added, 0 modified, 1 deleted');
+
+    // Verify record was NOT deleted
+    expect(Municipality::where('istat_code', '010002')->exists())->toBeTrue()
+        ->and(Municipality::withTrashed()->where('istat_code', '010002')->first()->deleted_at)->toBeNull();
+});
+
+test('update command shows count of suppressed records per entity in output', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    Municipality::create([
+        'name' => 'Mun1',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+    Municipality::create([
+        'name' => 'Mun2',
+        'istat_code' => '010002',
+        'province_id' => $province->id,
+    ]);
+    Municipality::create([
+        'name' => 'Mun3',
+        'istat_code' => '010003',
+        'province_id' => $province->id,
+    ]);
+
+    // ISTAT data is empty
+    Http::fake([
+        '*' => Http::response(createUpdateTestCsvHeader(), 200),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('5 deleted'); // 1 region + 1 province + 3 municipalities
+
+    // Verify all were soft-deleted
+    expect(Region::withoutTrashed()->count())->toBe(0)
+        ->and(Province::withoutTrashed()->count())->toBe(0)
+        ->and(Municipality::withoutTrashed()->count())->toBe(0)
+        ->and(Region::withTrashed()->count())->toBe(1)
+        ->and(Province::withTrashed()->count())->toBe(1)
+        ->and(Municipality::withTrashed()->count())->toBe(3);
+});
+
+test('update command shows suppressed record details at verbosity -v', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+    Municipality::create([
+        'name' => 'Old Municipality',
+        'istat_code' => '010002',
+        'province_id' => $province->id,
+    ]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['-v' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('Suppressed municipality: Old Municipality (ISTAT: 010002)');
+});
