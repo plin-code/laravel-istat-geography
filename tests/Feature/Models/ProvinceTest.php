@@ -19,3 +19,18 @@ test('can create a province', function () {
         ->istat_code->toBe('001')
         ->region_id->toBe($region->id);
 });
+
+test('istatFields returns the correct updatable ISTAT fields for Province', function () {
+    $fields = Province::istatFields();
+
+    expect($fields)
+        ->toBeArray()
+        ->toContain('name')
+        ->toContain('code')
+        ->toContain('istat_code')
+        ->toContain('region_id')
+        ->not->toContain('id')
+        ->not->toContain('created_at')
+        ->not->toContain('updated_at')
+        ->not->toContain('deleted_at');
+});

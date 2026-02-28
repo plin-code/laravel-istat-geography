@@ -19,3 +19,17 @@ test('can create a municipality', function () {
         ->istat_code->toBe('001272')
         ->province_id->toBe($province->id);
 });
+
+test('istatFields returns the correct updatable ISTAT fields for Municipality', function () {
+    $fields = Municipality::istatFields();
+
+    expect($fields)
+        ->toBeArray()
+        ->toContain('name')
+        ->toContain('istat_code')
+        ->toContain('province_id')
+        ->not->toContain('id')
+        ->not->toContain('created_at')
+        ->not->toContain('updated_at')
+        ->not->toContain('deleted_at');
+});

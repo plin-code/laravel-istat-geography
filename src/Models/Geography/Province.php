@@ -32,6 +32,22 @@ class Province extends Model
         'istat_code',
     ];
 
+    /**
+     * Get the list of ISTAT fields that can be updated by the geography:update command.
+     * These are fields that come from ISTAT data and can be safely overwritten.
+     *
+     * @return list<string>
+     */
+    public static function istatFields(): array
+    {
+        return [
+            'name',
+            'code',
+            'istat_code',
+            'region_id',
+        ];
+    }
+
     protected static function newFactory(): ProvinceFactory
     {
         return ProvinceFactory::new();

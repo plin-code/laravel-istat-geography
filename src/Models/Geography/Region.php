@@ -29,6 +29,20 @@ class Region extends Model
         'istat_code',
     ];
 
+    /**
+     * Get the list of ISTAT fields that can be updated by the geography:update command.
+     * These are fields that come from ISTAT data and can be safely overwritten.
+     *
+     * @return list<string>
+     */
+    public static function istatFields(): array
+    {
+        return [
+            'name',
+            'istat_code',
+        ];
+    }
+
     protected static function newFactory(): RegionFactory
     {
         return RegionFactory::new();
