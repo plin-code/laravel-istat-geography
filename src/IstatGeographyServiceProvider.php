@@ -6,6 +6,7 @@ namespace PlinCode\IstatGeography;
 
 use Illuminate\Support\Facades\Facade;
 use PlinCode\IstatGeography\Commands\IstatGeographyCommand;
+use PlinCode\IstatGeography\Commands\IstatGeographyUpdateCommand;
 use PlinCode\IstatGeography\Services\GeographyImportService;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -19,7 +20,8 @@ class IstatGeographyServiceProvider extends PackageServiceProvider
             ->hasConfigFile('istat-geography')
             ->hasViews()
             ->hasMigration('create_istat_geography_table')
-            ->hasCommand(IstatGeographyCommand::class);
+            ->hasCommand(IstatGeographyCommand::class)
+            ->hasCommand(IstatGeographyUpdateCommand::class);
     }
 
     public function packageRegistered(): void

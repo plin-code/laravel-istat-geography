@@ -1,0 +1,7 @@
+parameters:
+    ignoreErrors:
+        -
+            message: '#^Call to deprecated method createFromPath\(\) of class League\\Csv\\Reader#'
+            paths:
+                - src/Services/GeographyImportService.php
+                - src/Services/GeographyCompareService.php
