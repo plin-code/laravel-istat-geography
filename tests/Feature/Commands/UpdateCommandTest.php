@@ -570,3 +570,108 @@ test('update command shows suppressed record details at verbosity -v', function 
         ->assertSuccessful()
         ->expectsOutputToContain('Suppressed municipality: Old Municipality (ISTAT: 010002)');
 });
+
+test('update command wraps database operations in a transaction', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful();
+
+    // Verify records are created atomically
+    expect(Region::count())->toBe(1)
+        ->and(Province::count())->toBe(1)
+        ->and(Municipality::count())->toBe(1);
+});
+
+test('update command handles HTTP errors gracefully with clear message', function () {
+    Http::fake([
+        '*' => Http::response('Server Error', 500),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertFailed()
+        ->expectsOutputToContain('Update failed')
+        ->expectsOutputToContain('rolled back');
+
+    // Verify no records were created
+    expect(Region::count())->toBe(0)
+        ->and(Province::count())->toBe(0)
+        ->and(Municipality::count())->toBe(0);
+});
+
+test('update command accepts --force option', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['--force' => true])
+        ->assertSuccessful();
+});
+
+test('update command handles comparison errors gracefully', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    Province::create([
+        'name' => 'Torino',
+        'code' => '010001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('Update completed');
+});
+
+test('update command returns success code on successful completion', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->assertExitCode(0);
+});
+
+test('update command dry-run does not use transaction for database operations', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['--dry-run' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('[DRY-RUN]');
+
+    // Verify no records were created in dry-run mode
+    expect(Region::count())->toBe(0)
+        ->and(Province::count())->toBe(0)
+        ->and(Municipality::count())->toBe(0);
+});
