@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use PlinCode\IstatGeography\Services\ComparisonResult;
 use PlinCode\IstatGeography\Services\GeographyCompareService;
 use PlinCode\IstatGeography\Services\GeographyUpdateService;
+use Symfony\Component\Console\Helper\ProgressBar;
 
 class IstatGeographyUpdateCommand extends Command
 {
@@ -23,10 +24,13 @@ class IstatGeographyUpdateCommand extends Command
     /** @var array<string> */
     private array $warnings = [];
 
+    private float $startTime;
+
     public function handle(
         GeographyCompareService $compareService,
         GeographyUpdateService $updateService
     ): int {
+        $this->startTime = microtime(true);
         $isDryRun = (bool) $this->option('dry-run');
         $isForce = (bool) $this->option('force');
         $prefix = $isDryRun ? '[DRY-RUN] ' : '';
@@ -38,7 +42,11 @@ class IstatGeographyUpdateCommand extends Command
                 $this->line($prefix.'Downloading ISTAT data...');
             }
 
+            $this->debugLog($prefix.'Fetching CSV data from ISTAT server...');
+
             $comparison = $compareService->compare();
+
+            $this->debugLog($prefix.'CSV data parsed successfully');
 
             if ($this->output->isVeryVerbose()) {
                 $this->line($prefix.'Comparing with existing database records...');
@@ -55,8 +63,8 @@ class IstatGeographyUpdateCommand extends Command
             $this->displaySuppressedRecords($comparison, $prefix);
 
             if (! $isDryRun) {
-                $result = DB::transaction(function () use ($updateService, $comparison, $isForce) {
-                    return $this->applyChanges($updateService, $comparison, $isForce);
+                $result = DB::transaction(function () use ($updateService, $comparison, $isForce, $prefix) {
+                    return $this->applyChanges($updateService, $comparison, $isForce, $prefix);
                 });
                 $added = $result['added'];
                 $modified = $result['modified'];
@@ -67,13 +75,11 @@ class IstatGeographyUpdateCommand extends Command
                     'provinces' => $comparison->provinces->countNew(),
                     'municipalities' => $comparison->municipalities->countNew(),
                 ];
-
                 $modified = [
                     'regions' => $comparison->regions->countModified(),
                     'provinces' => $comparison->provinces->countModified(),
                     'municipalities' => $comparison->municipalities->countModified(),
                 ];
-
                 $suppressed = [
                     'regions' => $comparison->regions->countSuppressed(),
                     'provinces' => $comparison->provinces->countSuppressed(),
@@ -84,7 +90,13 @@ class IstatGeographyUpdateCommand extends Command
             $totalAdded = $added['regions'] + $added['provinces'] + $added['municipalities'];
             $totalModified = $modified['regions'] + $modified['provinces'] + $modified['municipalities'];
             $totalSuppressed = $suppressed['regions'] + $suppressed['provinces'] + $suppressed['municipalities'];
+
+            $elapsedTime = round(microtime(true) - $this->startTime, 2);
             $this->info($prefix."Update completed: {$totalAdded} added, {$totalModified} modified, {$totalSuppressed} deleted");
+
+            if ($this->output->isDebug()) {
+                $this->line($prefix."Total execution time: {$elapsedTime}s");
+            }
 
             $this->displayWarnings();
 
@@ -100,31 +112,69 @@ class IstatGeographyUpdateCommand extends Command
     private function applyChanges(
         GeographyUpdateService $updateService,
         ComparisonResult $comparison,
-        bool $isForce
+        bool $isForce,
+        string $prefix
     ): array {
         $added = ['regions' => 0, 'provinces' => 0, 'municipalities' => 0];
         $modified = ['regions' => 0, 'provinces' => 0, 'municipalities' => 0];
         $suppressed = ['regions' => 0, 'provinces' => 0, 'municipalities' => 0];
 
+        $totalOperations = $comparison->regions->countNew() + $comparison->provinces->countNew() + $comparison->municipalities->countNew()
+            + $comparison->regions->countModified() + $comparison->provinces->countModified() + $comparison->municipalities->countModified()
+            + $comparison->regions->countSuppressed() + $comparison->provinces->countSuppressed() + $comparison->municipalities->countSuppressed();
+
+        $progressBar = null;
+        if ($this->output->isVerbose() && $totalOperations > 0) {
+            $this->line($prefix.'Applying changes...');
+            $progressBar = $this->output->createProgressBar($totalOperations);
+            $progressBar->setFormat(' %current%/%max% [%bar%] %percent:3s%% %message%');
+            $progressBar->setMessage('Starting...');
+            $progressBar->start();
+        }
+
         try {
+            if ($progressBar) {
+                $progressBar->setMessage('Adding new records...');
+            }
+            $this->debugLog($prefix.'Starting to add new records...');
             $addResult = $updateService->applyNew($comparison);
             $added = $addResult['added'];
+            $this->advanceProgressBar($progressBar, $added['regions'] + $added['provinces'] + $added['municipalities']);
+            $this->debugLog($prefix."Added {$added['regions']} regions, {$added['provinces']} provinces, {$added['municipalities']} municipalities");
         } catch (Exception $e) {
             $this->handleOperationError('adding new records', $e, $isForce);
         }
 
         try {
+            if ($progressBar) {
+                $progressBar->setMessage('Updating records...');
+            }
+            $this->debugLog($prefix.'Starting to update modified records...');
             $modifyResult = $updateService->applyModifications($comparison);
             $modified = $modifyResult['modified'];
+            $this->advanceProgressBar($progressBar, $modified['regions'] + $modified['provinces'] + $modified['municipalities']);
+            $this->debugLog($prefix."Modified {$modified['regions']} regions, {$modified['provinces']} provinces, {$modified['municipalities']} municipalities");
         } catch (Exception $e) {
             $this->handleOperationError('updating records', $e, $isForce);
         }
 
         try {
+            if ($progressBar) {
+                $progressBar->setMessage('Soft-deleting records...');
+            }
+            $this->debugLog($prefix.'Starting to soft-delete suppressed records...');
             $suppressResult = $updateService->applySuppressed($comparison);
             $suppressed = $suppressResult['suppressed'];
+            $this->advanceProgressBar($progressBar, $suppressed['regions'] + $suppressed['provinces'] + $suppressed['municipalities']);
+            $this->debugLog($prefix."Deleted {$suppressed['regions']} regions, {$suppressed['provinces']} provinces, {$suppressed['municipalities']} municipalities");
         } catch (Exception $e) {
             $this->handleOperationError('deleting records', $e, $isForce);
+        }
+
+        if ($progressBar) {
+            $progressBar->setMessage('Done');
+            $progressBar->finish();
+            $this->newLine();
         }
 
         return [
@@ -132,6 +182,21 @@ class IstatGeographyUpdateCommand extends Command
             'modified' => $modified,
             'suppressed' => $suppressed,
         ];
+    }
+
+    private function advanceProgressBar(?ProgressBar $progressBar, int $steps): void
+    {
+        if ($progressBar && $steps > 0) {
+            $progressBar->advance($steps);
+        }
+    }
+
+    private function debugLog(string $message): void
+    {
+        if ($this->output->isDebug()) {
+            $elapsed = round(microtime(true) - $this->startTime, 3);
+            $this->line("[{$elapsed}s] {$message}");
+        }
     }
 
     private function handleOperationError(string $operation, Exception $e, bool $isForce): void

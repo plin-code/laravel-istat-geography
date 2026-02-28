@@ -675,3 +675,129 @@ test('update command dry-run does not use transaction for database operations', 
         ->and(Province::count())->toBe(0)
         ->and(Municipality::count())->toBe(0);
 });
+
+test('update command without verbosity flag shows only final summary', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $result = $this->artisan('geography:update');
+    $result->assertSuccessful()
+        ->expectsOutputToContain('Update completed: 3 added, 0 modified, 0 deleted');
+
+    // Without -v, should NOT show download progress or individual records
+    $result->doesntExpectOutputToContain('Downloading ISTAT data');
+});
+
+test('update command with -v shows progress bar during elaboration', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['-v' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('Downloading ISTAT data')
+        ->expectsOutputToContain('Applying changes');
+});
+
+test('update command with -vv shows list of modified records with change details', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    Municipality::create([
+        'name' => 'Old Name',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'New Name', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['-vv' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('Modified municipality (ISTAT: 010001)')
+        ->expectsOutputToContain('name: Old Name → New Name');
+});
+
+test('update command with -vvv shows debug output with timing', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['-vvv' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('Debug mode enabled')
+        ->expectsOutputToContain('Fetching CSV data from ISTAT server')
+        ->expectsOutputToContain('CSV data parsed successfully')
+        ->expectsOutputToContain('Total execution time');
+});
+
+test('update command with -vvv shows operation counts in debug output', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['-vvv' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('Starting to add new records')
+        ->expectsOutputToContain('Added 1 regions, 1 provinces, 1 municipalities');
+});
+
+test('update command dry-run prefixes all messages at all verbosity levels', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['--dry-run' => true, '-v' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('[DRY-RUN] Starting')
+        ->expectsOutputToContain('[DRY-RUN] Downloading ISTAT data')
+        ->expectsOutputToContain('[DRY-RUN] Update completed');
+});
+
+test('update command dry-run with -vvv shows debug messages with prefix', function () {
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['--dry-run' => true, '-vvv' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('[DRY-RUN] Debug mode enabled')
+        ->expectsOutputToContain('[DRY-RUN] Fetching CSV data from ISTAT server');
+});
