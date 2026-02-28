@@ -99,8 +99,6 @@ test('update command dry-run prefixes all output messages', function () {
         ->expectsOutputToContain('[DRY-RUN] Update completed');
 });
 
-// US-004 Tests: Adding new records
-
 test('update command creates new records when database is empty', function () {
     Http::fake([
         '*' => Http::response(
@@ -206,4 +204,138 @@ test('update command populates all ISTAT fields for new records', function () {
     expect($municipality->name)->toBe('Torino')
         ->and($municipality->istat_code)->toBe('010001')
         ->and($municipality->province_id)->toBe($province->id);
+});
+
+test('update command updates only ISTAT fields preserving custom fields', function () {
+    // Create existing records
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001', // Must match position 14 in CSV which is municipalityCode
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    $municipality = Municipality::create([
+        'name' => 'Torino Old Name',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+
+    // ISTAT data has updated municipality name
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino New Name', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('1 modified');
+
+    // Verify the municipality name was updated
+    $municipality->refresh();
+    expect($municipality->name)->toBe('Torino New Name')
+        ->and($municipality->istat_code)->toBe('010001')
+        ->and($municipality->province_id)->toBe($province->id);
+});
+
+test('update command does not update unchanged records', function () {
+    // Create existing records that match ISTAT data exactly
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001', // Must match position 14 in CSV which is municipalityCode
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    $municipality = Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('0 modified');
+});
+
+test('update command dry-run lists modified records but does not apply changes', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001', // Must match position 14 in CSV which is municipalityCode
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    $municipality = Municipality::create([
+        'name' => 'Torino Old Name',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino New Name', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['--dry-run' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('[DRY-RUN] Update completed: 0 added, 1 modified');
+
+    // Verify no changes were applied
+    $municipality->refresh();
+    expect($municipality->name)->toBe('Torino Old Name');
+});
+
+test('update command shows modification details at verbosity -vv', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '010001', // Must match position 14 in CSV which is municipalityCode
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    Municipality::create([
+        'name' => 'Torino Old Name',
+        'istat_code' => '010001',
+        'province_id' => $province->id,
+    ]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino New Name', 'Piemonte', 'Torino', 'TO'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['-vv' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('Modified municipality (ISTAT: 010001)')
+        ->expectsOutputToContain('name: Torino Old Name → Torino New Name');
 });

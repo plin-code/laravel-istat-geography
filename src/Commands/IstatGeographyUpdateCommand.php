@@ -41,20 +41,34 @@ class IstatGeographyUpdateCommand extends Command
 
         $this->displayNewRecords($comparison, $prefix, $isDryRun);
 
+        // Display modified records with details at -vv verbosity
+        $this->displayModifiedRecords($comparison, $prefix);
+
         $added = ['regions' => 0, 'provinces' => 0, 'municipalities' => 0];
+        $modified = ['regions' => 0, 'provinces' => 0, 'municipalities' => 0];
+
         if (! $isDryRun) {
-            $result = $updateService->applyNew($comparison);
-            $added = $result['added'];
+            $addResult = $updateService->applyNew($comparison);
+            $added = $addResult['added'];
+
+            $modifyResult = $updateService->applyModifications($comparison);
+            $modified = $modifyResult['modified'];
         } else {
             $added = [
                 'regions' => $comparison->regions->countNew(),
                 'provinces' => $comparison->provinces->countNew(),
                 'municipalities' => $comparison->municipalities->countNew(),
             ];
+            $modified = [
+                'regions' => $comparison->regions->countModified(),
+                'provinces' => $comparison->provinces->countModified(),
+                'municipalities' => $comparison->municipalities->countModified(),
+            ];
         }
 
         $totalAdded = $added['regions'] + $added['provinces'] + $added['municipalities'];
-        $this->info($prefix."Update completed: {$totalAdded} added, 0 modified, 0 deleted");
+        $totalModified = $modified['regions'] + $modified['provinces'] + $modified['municipalities'];
+        $this->info($prefix."Update completed: {$totalAdded} added, {$totalModified} modified, 0 deleted");
 
         return self::SUCCESS;
     }
@@ -75,6 +89,41 @@ class IstatGeographyUpdateCommand extends Command
 
         foreach ($comparison->municipalities->new as $istatCode => $data) {
             $this->line($prefix."New municipality: {$data['name']} (ISTAT: {$istatCode})");
+        }
+    }
+
+    private function displayModifiedRecords(ComparisonResult $comparison, string $prefix): void
+    {
+        if (! $this->output->isVerbose()) {
+            return;
+        }
+
+        foreach ($comparison->regions->modified as $istatCode => $data) {
+            $this->line($prefix."Modified region (ISTAT: {$istatCode})");
+            $this->displayFieldChanges($data['changes'], $prefix);
+        }
+
+        foreach ($comparison->provinces->modified as $istatCode => $data) {
+            $this->line($prefix."Modified province (ISTAT: {$istatCode})");
+            $this->displayFieldChanges($data['changes'], $prefix);
+        }
+
+        foreach ($comparison->municipalities->modified as $istatCode => $data) {
+            $this->line($prefix."Modified municipality (ISTAT: {$istatCode})");
+            $this->displayFieldChanges($data['changes'], $prefix);
+        }
+    }
+
+    private function displayFieldChanges(array $changes, string $prefix): void
+    {
+        if (! $this->output->isVeryVerbose()) {
+            return;
+        }
+
+        foreach ($changes as $field => $change) {
+            $old = $change['old'] ?? 'null';
+            $new = $change['new'] ?? 'null';
+            $this->line($prefix."  {$field}: {$old} → {$new}");
         }
     }
 }

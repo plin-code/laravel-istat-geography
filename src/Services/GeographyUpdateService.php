@@ -58,6 +58,67 @@ final class GeographyUpdateService
         ];
     }
 
+    public function applyModifications(ComparisonResult $comparison, ?string $connection = null): array
+    {
+        $this->connection = $connection ?? config('database.default');
+
+        $modifiedRegions = $this->updateModifiedRecords(
+            $comparison->regions->modified,
+            $this->regionModel
+        );
+
+        $modifiedProvinces = $this->updateModifiedRecords(
+            $comparison->provinces->modified,
+            $this->provinceModel
+        );
+
+        $modifiedMunicipalities = $this->updateModifiedRecords(
+            $comparison->municipalities->modified,
+            $this->municipalityModel
+        );
+
+        return [
+            'modified' => [
+                'regions' => $modifiedRegions,
+                'provinces' => $modifiedProvinces,
+                'municipalities' => $modifiedMunicipalities,
+            ],
+        ];
+    }
+
+    private function updateModifiedRecords(array $modifiedRecords, string $modelClass): int
+    {
+        $count = 0;
+
+        foreach ($modifiedRecords as $data) {
+            $id = $data['id'];
+            $changes = $data['changes'];
+
+            $updateData = [];
+            foreach ($changes as $field => $change) {
+                $updateData[$field] = $change['new'];
+            }
+
+            if (empty($updateData)) {
+                continue;
+            }
+
+            /** @var Region|Province|Municipality $model */
+            $model = new $modelClass;
+            $record = $model
+                ->setConnection($this->connection)
+                ->withoutTrashed()
+                ->find($id);
+
+            if ($record !== null) {
+                $record->update($updateData);
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
     private function buildExistingRegionIdMap(): array
     {
         /** @var Region $model */

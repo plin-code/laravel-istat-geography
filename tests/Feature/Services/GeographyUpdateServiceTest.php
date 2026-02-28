@@ -322,3 +322,224 @@ test('update service populates all ISTAT fields for new records', function () {
         ->and($municipality->istat_code)->toBe('001001')
         ->and($municipality->province_id)->toBe($province->id);
 });
+
+test('update service updates only ISTAT fields on existing region', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+
+    $comparison = new ComparisonResult(
+        regions: new EntityComparisonResult(
+            new: [],
+            modified: [
+                '01' => [
+                    'id' => $region->id,
+                    'changes' => [
+                        'name' => ['old' => 'Piemonte', 'new' => 'Piemonte Renamed'],
+                    ],
+                ],
+            ],
+            suppressed: []
+        ),
+        provinces: createEmptyEntityResult(),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applyModifications($comparison);
+
+    expect($result['modified']['regions'])->toBe(1)
+        ->and($result['modified']['provinces'])->toBe(0)
+        ->and($result['modified']['municipalities'])->toBe(0);
+
+    // Verify the record was actually updated
+    $region->refresh();
+    expect($region->name)->toBe('Piemonte Renamed')
+        ->and($region->istat_code)->toBe('01');
+});
+
+test('update service updates only ISTAT fields on existing province', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '001001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+
+    $comparison = new ComparisonResult(
+        regions: createEmptyEntityResult(),
+        provinces: new EntityComparisonResult(
+            new: [],
+            modified: [
+                '001' => [
+                    'id' => $province->id,
+                    'changes' => [
+                        'name' => ['old' => 'Torino', 'new' => 'Turin'],
+                        'code' => ['old' => '001001', 'new' => '001002'],
+                    ],
+                ],
+            ],
+            suppressed: []
+        ),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applyModifications($comparison);
+
+    expect($result['modified']['provinces'])->toBe(1);
+
+    $province->refresh();
+    expect($province->name)->toBe('Turin')
+        ->and($province->code)->toBe('001002')
+        ->and($province->istat_code)->toBe('001')
+        ->and($province->region_id)->toBe($region->id);
+});
+
+test('update service updates only ISTAT fields on existing municipality', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => '001001',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+
+    $municipality = Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '001001',
+        'province_id' => $province->id,
+    ]);
+
+    $comparison = new ComparisonResult(
+        regions: createEmptyEntityResult(),
+        provinces: createEmptyEntityResult(),
+        municipalities: new EntityComparisonResult(
+            new: [],
+            modified: [
+                '001001' => [
+                    'id' => $municipality->id,
+                    'changes' => [
+                        'name' => ['old' => 'Torino', 'new' => 'Torino City'],
+                    ],
+                ],
+            ],
+            suppressed: []
+        )
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applyModifications($comparison);
+
+    expect($result['modified']['municipalities'])->toBe(1);
+
+    $municipality->refresh();
+    expect($municipality->name)->toBe('Torino City')
+        ->and($municipality->istat_code)->toBe('001001')
+        ->and($municipality->province_id)->toBe($province->id);
+});
+
+test('update service returns correct counts when no modified records', function () {
+    $comparison = new ComparisonResult(
+        regions: createEmptyEntityResult(),
+        provinces: createEmptyEntityResult(),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applyModifications($comparison);
+
+    expect($result['modified']['regions'])->toBe(0)
+        ->and($result['modified']['provinces'])->toBe(0)
+        ->and($result['modified']['municipalities'])->toBe(0);
+});
+
+test('update service updates multiple records of same type', function () {
+    $region1 = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $region2 = Region::create([
+        'name' => 'Lombardia',
+        'istat_code' => '02',
+    ]);
+
+    $comparison = new ComparisonResult(
+        regions: new EntityComparisonResult(
+            new: [],
+            modified: [
+                '01' => [
+                    'id' => $region1->id,
+                    'changes' => [
+                        'name' => ['old' => 'Piemonte', 'new' => 'Piemonte Updated'],
+                    ],
+                ],
+                '02' => [
+                    'id' => $region2->id,
+                    'changes' => [
+                        'name' => ['old' => 'Lombardia', 'new' => 'Lombardia Updated'],
+                    ],
+                ],
+            ],
+            suppressed: []
+        ),
+        provinces: createEmptyEntityResult(),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applyModifications($comparison);
+
+    expect($result['modified']['regions'])->toBe(2);
+
+    $region1->refresh();
+    $region2->refresh();
+    expect($region1->name)->toBe('Piemonte Updated')
+        ->and($region2->name)->toBe('Lombardia Updated');
+});
+
+test('update service skips records with empty changes', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $originalUpdatedAt = $region->updated_at;
+
+    // Wait a tiny bit to ensure timestamp would change if updated
+    usleep(10000);
+
+    $comparison = new ComparisonResult(
+        regions: new EntityComparisonResult(
+            new: [],
+            modified: [
+                '01' => [
+                    'id' => $region->id,
+                    'changes' => [], // Empty changes
+                ],
+            ],
+            suppressed: []
+        ),
+        provinces: createEmptyEntityResult(),
+        municipalities: createEmptyEntityResult()
+    );
+
+    $service = app(GeographyUpdateService::class);
+    $result = $service->applyModifications($comparison);
+
+    // Should not count as modified since no actual changes
+    expect($result['modified']['regions'])->toBe(0);
+
+    $region->refresh();
+    expect($region->name)->toBe('Piemonte')
+        ->and($region->updated_at->equalTo($originalUpdatedAt))->toBeTrue();
+});
