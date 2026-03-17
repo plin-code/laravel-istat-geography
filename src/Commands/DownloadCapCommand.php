@@ -36,7 +36,7 @@ class DownloadCapCommand extends Command
             $content = $response->body();
 
             // Check if content is gzipped
-            $isGzip = strlen($content) >= 2 && ord($content[0]) === 0x1f && ord($content[1]) === 0x8b;
+            $isGzip = strlen($content) >= 2 && ord($content[0]) === 0x1F && ord($content[1]) === 0x8B;
 
             if ($isGzip) {
                 $this->info('Decompressing...');
