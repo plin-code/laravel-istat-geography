@@ -2,6 +2,10 @@
 
 All notable changes to `laravel-istat-geography` will be documented in this file.
 
+## ISTAT Properties Data v1 - 2026-03-17
+
+Lightweight JSON with municipality properties only. No geometries included.
+
 ## v1.1.0 - Geography update command - 2026-02-28
 
 ### Added
@@ -66,6 +70,7 @@ composer require plin-code/laravel-istat-geography
 
 
 
+
 ```
 #### 🔧 Configuration
 
@@ -76,6 +81,7 @@ php artisan vendor:publish --tag="istat-geography-config"
 
 
 
+
 ```
 #### 📦 Usage
 
@@ -83,6 +89,7 @@ Import geographical data:
 
 ```bash
 php artisan istat:geography:import
+
 
 
 
