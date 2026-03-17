@@ -1,5 +1,9 @@
 <?php
 
+use PlinCode\IstatGeography\Models\Geography\Municipality;
+use PlinCode\IstatGeography\Models\Geography\Province;
+use PlinCode\IstatGeography\Models\Geography\Region;
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -18,9 +22,9 @@ return [
     ],
 
     'models' => [
-        'region' => \PlinCode\IstatGeography\Models\Geography\Region::class,
-        'province' => \PlinCode\IstatGeography\Models\Geography\Province::class,
-        'municipality' => \PlinCode\IstatGeography\Models\Geography\Municipality::class,
+        'region' => Region::class,
+        'province' => Province::class,
+        'municipality' => Municipality::class,
     ],
 
     'import' => [
