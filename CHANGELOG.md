@@ -2,6 +2,10 @@
 
 All notable changes to `laravel-istat-geography` will be documented in this file.
 
+## ISTAT GeoJSON Full v1 - 2026-03-17
+
+Full GeoJSON (RFC 7946) with municipality boundaries from OpenStreetMap. Includes polygon geometries for all Italian municipalities.
+
 ## ISTAT Properties Data v1 - 2026-03-17
 
 Lightweight JSON with municipality properties only. No geometries included.
@@ -71,6 +75,7 @@ composer require plin-code/laravel-istat-geography
 
 
 
+
 ```
 #### 🔧 Configuration
 
@@ -82,6 +87,7 @@ php artisan vendor:publish --tag="istat-geography-config"
 
 
 
+
 ```
 #### 📦 Usage
 
@@ -89,6 +95,7 @@ Import geographical data:
 
 ```bash
 php artisan istat:geography:import
+
 
 
 
