@@ -10,3 +10,9 @@ parameters:
     tmpDir: build/phpstan
     checkOctaneCompatibility: true
     checkModelProperties: true
+    ignoreErrors:
+        -
+            message: "#Called 'env' outside of the config directory#"
+            paths:
+                - config/*
+            reportUnmatched: false

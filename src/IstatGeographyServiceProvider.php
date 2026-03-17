@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PlinCode\IstatGeography;
 
 use Illuminate\Support\Facades\Facade;
+use PlinCode\IstatGeography\Commands\DownloadCapCommand;
 use PlinCode\IstatGeography\Commands\IstatGeographyCommand;
 use PlinCode\IstatGeography\Commands\IstatGeographyUpdateCommand;
 use PlinCode\IstatGeography\Services\CapImportService;
@@ -23,7 +24,8 @@ class IstatGeographyServiceProvider extends PackageServiceProvider
             ->hasMigration('create_istat_geography_table')
             ->hasMigration('extend_municipalities_with_postal_codes')
             ->hasCommand(IstatGeographyCommand::class)
-            ->hasCommand(IstatGeographyUpdateCommand::class);
+            ->hasCommand(IstatGeographyUpdateCommand::class)
+            ->hasCommand(DownloadCapCommand::class);
     }
 
     public function packageRegistered(): void

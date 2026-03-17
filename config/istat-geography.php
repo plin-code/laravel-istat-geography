@@ -28,12 +28,12 @@ return [
     ],
 
     'import' => [
-        'csv_url' => 'https://www.istat.it/storage/codici-unita-amministrative/Elenco-comuni-italiani.csv',
+        'csv_url' => env('ISTAT_CSV_URL', 'https://www.istat.it/storage/codici-unita-amministrative/Elenco-comuni-italiani.csv'),
         'temp_filename' => 'istat_municipalities.csv',
     ],
 
     'cap' => [
-        'geojson_url' => 'https://wupqwfqjfpwrapgnogjv.supabase.co/storage/v1/object/public/parcel-data-access/cap/cap_subcomunali_italia.geojson',
+        'geojson_url' => env('CAP_GEOJSON_URL', 'https://wupqwfqjfpwrapgnogjv.supabase.co/storage/v1/object/public/parcel-data-access/cap/cap_subcomunali_italia.geojson'),
         'temp_filename' => 'cap_dataset.geojson',
     ],
 ];

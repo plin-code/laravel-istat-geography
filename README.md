@@ -92,6 +92,26 @@ php artisan geography:import --cap-only --cap-file=cap-dataset.json
 
 > **Note:** The remote GeoJSON with geometries is ~464MB. Using `--cap-file` with a preprocessed JSON file (~3MB) is recommended for better performance.
 
+### `geography:download-cap`
+
+Downloads CAP GeoJSON data and saves it locally for offline import. Useful when you want to download once and import multiple times.
+
+```bash
+# Download from default URL (config/env)
+php artisan geography:download-cap
+
+# Download from custom URL
+php artisan geography:download-cap --url=https://example.com/cap.json
+
+# Specify output path
+php artisan geography:download-cap --output=storage/app/my-cap.json
+```
+
+After downloading, import with:
+```bash
+php artisan geography:import --cap --cap-file=storage/app/cap-dataset.json
+```
+
 ### `geography:update`
 
 Incrementally synchronizes your database with the latest ISTAT data. It compares the current ISTAT CSV against your existing records and applies only the differences: new records are added, changed records are updated, and records no longer present in ISTAT are soft-deleted.
@@ -146,7 +166,8 @@ The `config/istat-geography.php` file allows you to customize:
 
 - **Table names**: Customize the database table names
 - **Model classes**: Use your own model classes by extending the base ones
-- **CSV URL**: Change the ISTAT data source URL
+- **CSV URL**: Change the ISTAT data source URL (also via `ISTAT_CSV_URL` env)
+- **CAP GeoJSON URL**: Change the CAP data source URL (also via `CAP_GEOJSON_URL` env)
 - **Temporary file name**: Customize the cache file name
 
 ### Example Configuration
