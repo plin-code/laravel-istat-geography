@@ -6,7 +6,7 @@ use PlinCode\IstatGeography\Models\Geography\Municipality;
 use PlinCode\IstatGeography\Services\CapImportService;
 
 beforeEach(function () {
-    Storage::disk('local')->delete('cap_dataset.geojson');
+    Storage::disk('local')->delete('cap_dataset.json');
 });
 
 test('imports postal codes from geojson', function () {
@@ -15,7 +15,7 @@ test('imports postal codes from geojson', function () {
     ]);
 
     Http::fake([
-        config('istat-geography.cap.geojson_url') => Http::response([
+        config('istat-geography.cap.properties_url') => Http::response([
             'type' => 'FeatureCollection',
             'features' => [
                 [
@@ -45,7 +45,7 @@ test('imports multiple postal codes', function () {
     $municipality2 = Municipality::factory()->create(['bel_code' => 'B002']);
 
     Http::fake([
-        config('istat-geography.cap.geojson_url') => Http::response([
+        config('istat-geography.cap.properties_url') => Http::response([
             'type' => 'FeatureCollection',
             'features' => [
                 [
@@ -83,7 +83,7 @@ test('returns zero count for unmatched bel_code', function () {
     // When a bel_code in the CAP data doesn't match any municipality,
     // the service logs a warning and continues. We verify the count is 0.
     Http::fake([
-        config('istat-geography.cap.geojson_url') => Http::response([
+        config('istat-geography.cap.properties_url') => Http::response([
             'type' => 'FeatureCollection',
             'features' => [
                 [
@@ -109,7 +109,7 @@ test('skips features without codice_bel', function () {
     $municipality = Municipality::factory()->create(['bel_code' => 'A001']);
 
     Http::fake([
-        config('istat-geography.cap.geojson_url') => Http::response([
+        config('istat-geography.cap.properties_url') => Http::response([
             'type' => 'FeatureCollection',
             'features' => [
                 [
@@ -142,7 +142,7 @@ test('skips features without codice_bel', function () {
 
 test('throws exception for invalid geojson', function () {
     Http::fake([
-        config('istat-geography.cap.geojson_url') => Http::response([
+        config('istat-geography.cap.properties_url') => Http::response([
             'type' => 'InvalidType',
             'features' => [],
         ]),
@@ -170,8 +170,8 @@ test('uses cached geojson file if downloaded today', function () {
         ],
     ]);
 
-    Storage::disk('local')->put('cap_dataset.geojson', $geojsonContent);
-    touch(Storage::disk('local')->path('cap_dataset.geojson'));
+    Storage::disk('local')->put('cap_dataset.json', $geojsonContent);
+    touch(Storage::disk('local')->path('cap_dataset.json'));
 
     Http::fake();
 

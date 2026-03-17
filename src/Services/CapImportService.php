@@ -14,7 +14,7 @@ final class CapImportService
 {
     private ?string $connection = null;
 
-    private string $geojsonUrl;
+    private string $propertiesUrl;
 
     private string $tempFilename;
 
@@ -24,7 +24,7 @@ final class CapImportService
 
     public function __construct()
     {
-        $this->geojsonUrl = config('istat-geography.cap.geojson_url');
+        $this->propertiesUrl = config('istat-geography.cap.properties_url');
         $this->tempFilename = config('istat-geography.cap.temp_filename');
         $this->municipalityModel = config('istat-geography.models.municipality');
     }
@@ -44,7 +44,7 @@ final class CapImportService
         $this->connection = $connection;
 
         try {
-            $filePath = $this->localFilePath ?? $this->downloadGeoJson();
+            $filePath = $this->localFilePath ?? $this->downloadCapData();
             $features = $this->parseCapData($filePath);
 
             $updatedCount = 0;
@@ -90,7 +90,7 @@ final class CapImportService
         }
     }
 
-    private function downloadGeoJson(): string
+    private function downloadCapData(): string
     {
         $storage = Storage::disk('local');
         $filePath = $storage->path($this->tempFilename);
@@ -102,13 +102,25 @@ final class CapImportService
             }
         }
 
-        $response = Http::timeout(300)->withOptions([
-            'sink' => $filePath,
-        ])->get($this->geojsonUrl);
+        $response = Http::timeout(300)->get($this->propertiesUrl);
 
         if (! $response->successful()) {
-            throw new RuntimeException('Failed to download GeoJSON CAP data');
+            throw new RuntimeException('Failed to download CAP data: HTTP '.$response->status());
         }
+
+        $content = $response->body();
+
+        $isGzip = strlen($content) >= 2 && ord($content[0]) === 0x1f && ord($content[1]) === 0x8b;
+
+        if ($isGzip) {
+            $decompressed = gzdecode($content);
+            if ($decompressed === false) {
+                throw new RuntimeException('Failed to decompress gzip data');
+            }
+            $content = $decompressed;
+        }
+
+        $storage->put($this->tempFilename, $content);
 
         return $filePath;
     }

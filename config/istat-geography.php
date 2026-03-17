@@ -33,7 +33,8 @@ return [
     ],
 
     'cap' => [
-        'geojson_url' => env('CAP_GEOJSON_URL', 'https://wupqwfqjfpwrapgnogjv.supabase.co/storage/v1/object/public/parcel-data-access/cap/cap_subcomunali_italia.geojson'),
-        'temp_filename' => 'cap_dataset.geojson',
+        'properties_url' => env('CAP_PROPERTIES_URL', 'https://github.com/plin-code/laravel-istat-geography/releases/download/data-properties-v1/municipality_cap_dataset.json.gz'),
+        'geojson_url' => env('CAP_GEOJSON_URL', 'https://github.com/plin-code/laravel-istat-geography/releases/download/data-geo-v1/municipality_boundaries.geojson.gz'),
+        'temp_filename' => 'cap_dataset.json',
     ],
 ];

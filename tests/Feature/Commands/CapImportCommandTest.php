@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Storage;
 use PlinCode\IstatGeography\Models\Geography\Municipality;
 
 beforeEach(function () {
-    Storage::disk('local')->delete('cap_dataset.geojson');
+    Storage::disk('local')->delete('cap_dataset.json');
     Storage::disk('local')->delete('istat_municipalities.csv');
 });
 
@@ -20,7 +20,7 @@ function mockIstatCsv(string $belCode = 'A074'): string
 test('import command with --cap flag imports both istat and cap data', function () {
     Http::fake([
         config('istat-geography.import.csv_url') => Http::response(mockIstatCsv('A074'), 200),
-        config('istat-geography.cap.geojson_url') => Http::response([
+        config('istat-geography.cap.properties_url') => Http::response([
             'type' => 'FeatureCollection',
             'features' => [
                 [
@@ -56,7 +56,7 @@ test('import command with --cap-only flag imports only cap data', function () {
     ]);
 
     Http::fake([
-        config('istat-geography.cap.geojson_url') => Http::response([
+        config('istat-geography.cap.properties_url') => Http::response([
             'type' => 'FeatureCollection',
             'features' => [
                 [

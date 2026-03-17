@@ -20,7 +20,7 @@ test('download cap command downloads geojson from default url', function () {
     $outputPath = storage_path('app/cap-dataset.json');
 
     $this->artisan('geography:download-cap')
-        ->expectsOutputToContain('Downloading CAP data from:')
+        ->expectsOutputToContain('Downloading CAP GeoJSON from:')
         ->expectsOutputToContain('Download completed!')
         ->assertSuccessful();
 });
