@@ -9,6 +9,7 @@ A Laravel package for importing and managing Italian geographical data from ISTA
 ## Features
 
 - 🇮🇹 Import Italian regions, provinces, and municipalities from ISTAT
+- 📮 Import Italian postal codes (CAP) with support for multi-CAP municipalities
 - 🔄 Incremental updates: add new records, update changes, soft-delete removed ones
 - 📊 Daily CSV caching to avoid unnecessary requests
 - 🔗 Eloquent models with hierarchical relationships
@@ -67,6 +68,29 @@ Performs a full import of all geographical data from ISTAT. Use this for the ini
 ```bash
 php artisan geography:import
 ```
+
+#### Options
+
+| Option | Description |
+|---|---|
+| `--cap` | Also import postal codes (CAP) after ISTAT data |
+| `--cap-only` | Import only postal codes, skip ISTAT data (requires existing municipalities) |
+| `--cap-file=<path>` | Use a local JSON file for CAP data instead of downloading |
+
+#### Examples
+
+```bash
+# Import ISTAT data only
+php artisan geography:import
+
+# Import ISTAT data + CAP (using local file - recommended)
+php artisan geography:import --cap --cap-file=cap-dataset.json
+
+# Update only CAP on existing municipalities
+php artisan geography:import --cap-only --cap-file=cap-dataset.json
+```
+
+> **Note:** The remote GeoJSON with geometries is ~464MB. Using `--cap-file` with a preprocessed JSON file (~3MB) is recommended for better performance.
 
 ### `geography:update`
 
@@ -185,7 +209,8 @@ Each model exposes a static `istatFields()` method that returns the list of fiel
 ```php
 Region::istatFields();       // ['name', 'istat_code']
 Province::istatFields();     // ['name', 'code', 'istat_code', 'region_id']
-Municipality::istatFields(); // ['name', 'istat_code', 'province_id']
+Municipality::istatFields(); // ['name', 'istat_code', 'province_id', 'bel_code']
+Municipality::capFields();   // ['postal_code', 'postal_codes']
 ```
 
 ### Extending Models
@@ -258,6 +283,9 @@ Remember to update the `models` section in the configuration file to point to yo
 - `province_id` (UUID, foreign key)
 - `name` (string)
 - `istat_code` (string, unique)
+- `bel_code` (string, nullable) - Cadastral/Belfiore code for CAP matching
+- `postal_code` (string, nullable) - Primary postal code (CAP)
+- `postal_codes` (string, nullable) - Range of postal codes for large municipalities (e.g., "00118-00199")
 - `created_at`, `updated_at`, `deleted_at`
 
 ## Relationships
@@ -310,6 +338,18 @@ The package includes:
 - Update service for applying changes
 - Artisan command functionality (import and update)
 - Configuration handling
+
+## Data Sources
+
+### ISTAT Data
+
+Geographic data (regions, provinces, municipalities) is sourced from [ISTAT](https://www.istat.it/) (Italian National Institute of Statistics), the official Italian government statistics agency.
+
+### Postal Codes (CAP)
+
+Postal code data is sourced from [Zornade Data Downloads](https://zornade.com/data-downloads/).
+
+A huge thanks to [Zornade](https://github.com/zornade) for their incredible work in making Italian public data freely available. Their dedication to open data helps developers build better applications for Italian users.
 
 ## Contributing
 

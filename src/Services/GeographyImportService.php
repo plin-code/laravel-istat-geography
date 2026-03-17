@@ -72,6 +72,7 @@ final class GeographyImportService
                 $this->processMunicipality(
                     name: $values[5],
                     istatCode: $values[4],
+                    belCode: $values[19],
                     provinceId: $provinces[$provinceKey]
                 );
 
@@ -155,7 +156,7 @@ final class GeographyImportService
             )->id;
     }
 
-    private function processMunicipality(string $name, string $istatCode, string $provinceId): void
+    private function processMunicipality(string $name, string $istatCode, string $belCode, string $provinceId): void
     {
         /** @var Municipality $model */
         $model = new ($this->municipalityModel);
@@ -165,6 +166,7 @@ final class GeographyImportService
                 ['istat_code' => $istatCode],
                 [
                     'name' => $name,
+                    'bel_code' => $belCode,
                     'province_id' => $provinceId,
                 ]
             );
