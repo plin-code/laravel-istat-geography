@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use PlinCode\IstatGeography\Models\Geography\Municipality;
 use PlinCode\IstatGeography\Services\CapImportService;
