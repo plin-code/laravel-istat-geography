@@ -28,6 +28,9 @@ class Municipality extends Model
         'name',
         'province_id',
         'istat_code',
+        'bel_code',
+        'postal_code',
+        'postal_codes',
     ];
 
     /**
@@ -42,6 +45,20 @@ class Municipality extends Model
             'name',
             'istat_code',
             'province_id',
+            'bel_code',
+        ];
+    }
+
+    /**
+     * Get the list of CAP fields that can be updated by the geography:import --cap command.
+     *
+     * @return list<string>
+     */
+    public static function capFields(): array
+    {
+        return [
+            'postal_code',
+            'postal_codes',
         ];
     }
 

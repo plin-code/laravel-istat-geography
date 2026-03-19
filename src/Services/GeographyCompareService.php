@@ -6,6 +6,7 @@ namespace PlinCode\IstatGeography\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use League\Csv\Bom;
 use League\Csv\Reader;
 use PlinCode\IstatGeography\Models\Geography\Municipality;
 use PlinCode\IstatGeography\Models\Geography\Province;
@@ -78,7 +79,7 @@ final class GeographyCompareService
     private function parseIstatData(string $csvPath): array
     {
         $csv = Reader::createFromPath($csvPath, 'r');
-        $csv->setOutputBOM(\League\Csv\Bom::Utf8);
+        $csv->setOutputBOM(Bom::Utf8);
         $csv->appendStreamFilterOnRead('convert.iconv.ISO-8859-15/UTF-8');
         $csv->setDelimiter(';');
         $csv->setHeaderOffset(0);

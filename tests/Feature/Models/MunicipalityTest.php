@@ -28,8 +28,21 @@ test('istatFields returns the correct updatable ISTAT fields for Municipality', 
         ->toContain('name')
         ->toContain('istat_code')
         ->toContain('province_id')
+        ->toContain('bel_code')
         ->not->toContain('id')
         ->not->toContain('created_at')
         ->not->toContain('updated_at')
         ->not->toContain('deleted_at');
+});
+
+test('capFields returns the correct updatable CAP fields for Municipality', function () {
+    $fields = Municipality::capFields();
+
+    expect($fields)
+        ->toBeArray()
+        ->toContain('postal_code')
+        ->toContain('postal_codes')
+        ->not->toContain('bel_code')
+        ->not->toContain('name')
+        ->not->toContain('istat_code');
 });
