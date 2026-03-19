@@ -2,6 +2,47 @@
 
 All notable changes to `laravel-istat-geography` will be documented in this file.
 
+## v1.2.0 - CAP (Postal Code) Support - 2026-03-19
+
+### 📮 CAP (Postal Code) Support
+
+This release adds full postal code import support to laravel-istat-geography.
+
+#### What's new
+
+New fields on municipalities table
+
+- `bel_code` - Codice Catastale, used to match municipalities with CAP data
+- `postal_code` - primary postal code (CAP)
+- `postal_codes` - range of postal codes for large municipalities (e.g. 00118-00199)
+
+#### New Artisan commands
+
+- `geography:import --cap` - imports ISTAT data and postal codes in one shot
+- `geography:import --cap-only` - updates only CAP on existing municipalities
+- `geography:import --cap-file=<path>` - uses a local JSON file instead of downloading
+- `geography:download-cap` - downloads and decompresses the CAP GeoJSON locally for offline use
+
+#### New migration
+
+`extend_municipalities_with_postal_codes`, run `php artisan migrate` to apply.
+
+#### Recommended usage
+
+```bash
+# First time: import everything
+php artisan geography:import --cap --cap-file=cap-dataset.json
+
+# Update only CAP on existing data
+php artisan geography:import --cap-only --cap-file=cap-dataset.json
+
+```
+> The remote **GeoJSON** with geometries is ~464 MB. Using --cap-file with the preprocessed properties-only dataset (~3 MB) is strongly recommended.
+
+#### Data source
+
+Postal code data is sourced from [Zornade Data Downloads](https://zornade.com/data-downloads/). A huge thanks to [Zornade](https://github.com/zornade) for their incredible work in making Italian public data freely available as open data. 🙏
+
 ## ISTAT GeoJSON Full v1 - 2026-03-17
 
 Full GeoJSON (RFC 7946) with municipality boundaries from OpenStreetMap. Includes polygon geometries for all Italian municipalities.
@@ -76,6 +117,7 @@ composer require plin-code/laravel-istat-geography
 
 
 
+
 ```
 #### 🔧 Configuration
 
@@ -88,6 +130,7 @@ php artisan vendor:publish --tag="istat-geography-config"
 
 
 
+
 ```
 #### 📦 Usage
 
@@ -95,6 +138,7 @@ Import geographical data:
 
 ```bash
 php artisan istat:geography:import
+
 
 
 
