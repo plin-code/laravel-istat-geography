@@ -1,5 +1,11 @@
 # Laravel ISTAT Geography
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/plin-code/laravel-istat-geography.svg?style=flat-square)](https://packagist.org/packages/plin-code/laravel-istat-geography)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/plin-code/laravel-istat-geography/run-tests.yml?branch=main&label=tests)](https://github.com/plin-code/laravel-istat-geography/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/plin-code/laravel-istat-geography/fix-php-code-style-issues.yml?branch=main&label=code%20style)](https://github.com/plin-code/laravel-istat-geography/actions?query=workflow%3A%22Check+%26+fix+styling%22+branch%3Amain)
+[![Total Downloads](https://img.shields.io/packagist/dt/plin-code/laravel-istat-geography.svg?style=flat-square)](https://packagist.org/packages/plin-code/laravel-istat-geography)
+
+
 <p align="center">
   <img src="art/laravel-istat-geography.png" alt="Laravel ISTAT Geography" width="600">
 </p>
