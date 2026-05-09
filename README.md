@@ -170,6 +170,7 @@ php artisan vendor:publish --provider="PlinCode\IstatGeography\IstatGeographySer
 
 The `config/istat-geography.php` file allows you to customize:
 
+- **Database connection**: Choose which database connection the package tables should use (defaults to the main connection)
 - **Table names**: Customize the database table names
 - **Model classes**: Use your own model classes by extending the base ones
 - **CSV URL**: Change the ISTAT data source URL (also via `ISTAT_CSV_URL` env)
