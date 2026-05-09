@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'connection' => env('ISTAT_CONNECTION', env('DB_CONNECTION')),
+    'connection' => env('ISTAT_DB_CONNECTION', env('DB_CONNECTION')),
 
     'tables' => [
         'regions' => 'regions',
