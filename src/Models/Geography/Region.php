@@ -10,10 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use PlinCode\IstatGeography\Database\Factories\RegionFactory;
+use PlinCode\IstatGeography\Models\Geography\Concerns\CustomizesConnection;
 
 class Region extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes, CustomizesConnection;
 
     protected $keyType = 'string';
 
