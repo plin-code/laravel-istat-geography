@@ -60,7 +60,7 @@ final class CapImportService
                 /** @var Municipality $model */
                 $model = new ($this->municipalityModel);
                 $municipality = $model
-                    ->setConnection($this->connection ?? config('database.default'))
+                    ->setConnection($this->connection ?? config('istat-geography.connection'))
                     ->where('bel_code', $belCode)
                     ->first();
 

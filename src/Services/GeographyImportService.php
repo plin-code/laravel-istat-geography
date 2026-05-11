@@ -132,7 +132,7 @@ final class GeographyImportService
         $model = new ($this->regionModel);
 
         return $model
-            ->setConnection($this->connection ?? config('database.default'))
+            ->setConnection($this->connection ?? config('istat-geography.connection'))
             ->updateOrCreate(
                 ['istat_code' => $istatCode],
                 ['name' => $name]
@@ -145,7 +145,7 @@ final class GeographyImportService
         $model = new ($this->provinceModel);
 
         return $model
-            ->setConnection($this->connection ?? config('database.default'))
+            ->setConnection($this->connection ?? config('istat-geography.connection'))
             ->updateOrCreate(
                 ['istat_code' => $istatCode],
                 [
@@ -161,7 +161,7 @@ final class GeographyImportService
         /** @var Municipality $model */
         $model = new ($this->municipalityModel);
         $model
-            ->setConnection($this->connection ?? config('database.default'))
+            ->setConnection($this->connection ?? config('istat-geography.connection'))
             ->updateOrCreate(
                 ['istat_code' => $istatCode],
                 [
