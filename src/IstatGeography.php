@@ -14,6 +14,6 @@ readonly class IstatGeography
 
     public function import(): int
     {
-        return $this->importService->execute();
+        return $this->importService->execute(config('istat-geography.connection'));
     }
 }
