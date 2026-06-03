@@ -132,7 +132,7 @@ final class GeographyCompareService
      */
     private function loadDatabaseData(): array
     {
-        $connection = $this->connection ?? config('istat-geography.connection');
+        $connection = $this->connection ?? config('istat-geography.connection') ?? config('database.default');
 
         /** @var Region $regionModel */
         $regionModel = new ($this->regionModel);

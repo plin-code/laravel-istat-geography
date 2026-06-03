@@ -38,7 +38,7 @@ final class GeographyUpdateService
 
     public function applyNew(ComparisonResult $comparison, ?string $connection = null): array
     {
-        $this->connection = $connection ?? config('istat-geography.connection');
+        $this->connection = $connection ?? config('istat-geography.connection') ?? config('database.default');
 
         $regionIdMap = $this->buildExistingRegionIdMap();
         $provinceIdMap = $this->buildExistingProvinceIdMap();
@@ -60,7 +60,7 @@ final class GeographyUpdateService
 
     public function applyModifications(ComparisonResult $comparison, ?string $connection = null): array
     {
-        $this->connection = $connection ?? config('istat-geography.connection');
+        $this->connection = $connection ?? config('istat-geography.connection') ?? config('database.default');
 
         $modifiedRegions = $this->updateModifiedRecords(
             $comparison->regions->modified,
@@ -88,7 +88,7 @@ final class GeographyUpdateService
 
     public function applySuppressed(ComparisonResult $comparison, ?string $connection = null): array
     {
-        $this->connection = $connection ?? config('istat-geography.connection');
+        $this->connection = $connection ?? config('istat-geography.connection') ?? config('database.default');
 
         $suppressedRegions = $this->softDeleteRecords(
             $comparison->regions->suppressed,
