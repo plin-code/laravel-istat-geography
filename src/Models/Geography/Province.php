@@ -11,11 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use PlinCode\IstatGeography\Database\Factories\ProvinceFactory;
-use PlinCode\IstatGeography\Models\Geography\Concerns\CustomizesConnection;
+use PlinCode\IstatGeography\Models\Geography\Concerns\HasCustomConnection;
 
 class Province extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes, CustomizesConnection;
+    use HasCustomConnection, HasFactory, HasUuids, SoftDeletes;
 
     protected $keyType = 'string';
 

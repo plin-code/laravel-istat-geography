@@ -27,7 +27,9 @@ test('IstatGeography import uses configured connection end-to-end', function () 
         ->and(Municipality::count())->toBe(1);
 });
 
-test('GeographyImportService execute stores provided connection', function () use ($csvHeader, $csvRow) {
+test('GeographyImportService stores records on the configured connection', function () use ($csvHeader, $csvRow) {
+    config()->set('istat-geography.connection', 'testing');
+
     Http::fake(['*' => Http::response($csvHeader."\n".$csvRow, 200)]);
     Storage::disk('local')->delete('istat_municipalities.csv');
 

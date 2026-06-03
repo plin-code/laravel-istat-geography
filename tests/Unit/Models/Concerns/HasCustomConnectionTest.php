@@ -24,6 +24,12 @@ test('Municipality getConnectionName returns value from config', function () {
     expect((new Municipality)->getConnectionName())->toBe('custom_connection');
 });
 
+test('getConnectionName falls back to the default connection when not configured', function () {
+    config()->set('istat-geography.connection', null);
+
+    expect((new Region)->getConnectionName())->toBe(config('database.default'));
+});
+
 test('models reflect connection change at runtime', function () {
     config()->set('istat-geography.connection', 'connection_a');
     expect((new Region)->getConnectionName())->toBe('connection_a');

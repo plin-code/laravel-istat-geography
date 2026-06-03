@@ -10,11 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use PlinCode\IstatGeography\Database\Factories\MunicipalityFactory;
-use PlinCode\IstatGeography\Models\Geography\Concerns\CustomizesConnection;
+use PlinCode\IstatGeography\Models\Geography\Concerns\HasCustomConnection;
 
 class Municipality extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes, CustomizesConnection;
+    use HasCustomConnection, HasFactory, HasUuids, SoftDeletes;
 
     protected $keyType = 'string';
 
