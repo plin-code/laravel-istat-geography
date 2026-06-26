@@ -36,8 +36,5 @@ test('GeographyImportService stores records on the configured connection', funct
     $service = app(GeographyImportService::class);
     $service->execute('testing');
 
-    $property = (new ReflectionClass($service))->getProperty('connection');
-    $property->setAccessible(true);
-
-    expect($property->getValue($service))->toBe('testing');
+    expect(Region::first()->getConnectionName())->toBe('testing');
 });
