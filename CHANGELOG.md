@@ -2,6 +2,33 @@
 
 All notable changes to `laravel-istat-geography` will be documented in this file.
 
+## v1.3.0 - Custom Database Connection Support - 2026-06-26
+
+### 🔌 Custom Database Connection Support
+
+This release lets you store ISTAT geographical data on a database connection of your choice, instead of the application default.
+
+#### What's new
+
+Models (Region, Province, Municipality) and the import, update, compare and CAP services now resolve their connection from configuration. You can point the whole package at a dedicated connection (a separate schema, a read replica, a different driver) without touching the rest of your app.
+
+#### Configuration
+
+Set the connection via the new config key or env variable:
+
+```php
+// config/istat-geography.php
+'connection' => env('ISTAT_DB_CONNECTION', env('DB_CONNECTION')),
+
+```
+```dotenv
+ISTAT_DB_CONNECTION=geography
+
+```
+#### Backward compatibility
+
+Fully backward compatible. If you do not set a connection (including configs published before this option existed), the package falls back to the application default connection. No action needed on existing installs.
+
 ## v1.2.0 - CAP (Postal Code) Support - 2026-03-19
 
 ### 📮 CAP (Postal Code) Support
@@ -35,6 +62,7 @@ php artisan geography:import --cap --cap-file=cap-dataset.json
 
 # Update only CAP on existing data
 php artisan geography:import --cap-only --cap-file=cap-dataset.json
+
 
 ```
 > The remote **GeoJSON** with geometries is ~464 MB. Using --cap-file with the preprocessed properties-only dataset (~3 MB) is strongly recommended.
@@ -118,6 +146,7 @@ composer require plin-code/laravel-istat-geography
 
 
 
+
 ```
 #### 🔧 Configuration
 
@@ -131,6 +160,7 @@ php artisan vendor:publish --tag="istat-geography-config"
 
 
 
+
 ```
 #### 📦 Usage
 
@@ -138,6 +168,7 @@ Import geographical data:
 
 ```bash
 php artisan istat:geography:import
+
 
 
 
