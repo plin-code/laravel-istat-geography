@@ -139,7 +139,10 @@ final class GeographyUpdateService
                 ->find($id);
 
             if ($record !== null) {
-                $record->update($updateData);
+                foreach ($updateData as $field => $value) {
+                    $record->setAttribute((string) $field, $value);
+                }
+                $record->save();
                 $count++;
             }
         }
