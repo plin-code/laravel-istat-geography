@@ -7,7 +7,7 @@
 
 
 <p align="center">
-  <img src="art/laravel-istat-geography.png" alt="Laravel ISTAT Geography" width="600">
+  <img src="https://raw.githubusercontent.com/plin-code/laravel-istat-geography/main/art/banner.png" alt="Laravel ISTAT Geography">
 </p>
 
 A Laravel package for importing and managing Italian geographical data from ISTAT.
