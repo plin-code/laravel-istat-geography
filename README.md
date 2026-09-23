@@ -443,9 +443,11 @@ The package includes:
 
 Geographic data (regions, provinces, municipalities) is sourced from [ISTAT](https://www.istat.it/) (Italian National Institute of Statistics), the official Italian government statistics agency.
 
-### Postal Codes (CAP)
+### Postal Codes (CAP) and Boundaries
 
-Postal code data is sourced from [Zornade Data Downloads](https://zornade.com/data-downloads/).
+Postal code data (`data-properties-v1`) and the full boundaries GeoJSON (`data-geo-v1`) are sourced from [Zornade Data Downloads](https://zornade.com/data-downloads/). They are derived from OpenStreetMap addresses, so they are licensed under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/). If you use or redistribute them, keep this attribution and share derived databases under the same license:
+
+> © OpenStreetMap contributors (ODbL). Data processed by Zornade (https://zornade.com).
 
 ### Municipality Coordinates
 
