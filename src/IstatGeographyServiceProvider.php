@@ -6,9 +6,11 @@ namespace PlinCode\IstatGeography;
 
 use Illuminate\Support\Facades\Facade;
 use PlinCode\IstatGeography\Commands\DownloadCapCommand;
+use PlinCode\IstatGeography\Commands\DownloadCoordinatesCommand;
 use PlinCode\IstatGeography\Commands\IstatGeographyCommand;
 use PlinCode\IstatGeography\Commands\IstatGeographyUpdateCommand;
 use PlinCode\IstatGeography\Services\CapImportService;
+use PlinCode\IstatGeography\Services\CoordinatesImportService;
 use PlinCode\IstatGeography\Services\GeographyImportService;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -23,9 +25,11 @@ class IstatGeographyServiceProvider extends PackageServiceProvider
             ->hasViews()
             ->hasMigration('create_istat_geography_table')
             ->hasMigration('extend_municipalities_with_postal_codes')
+            ->hasMigration('extend_municipalities_with_coordinates')
             ->hasCommand(IstatGeographyCommand::class)
             ->hasCommand(IstatGeographyUpdateCommand::class)
-            ->hasCommand(DownloadCapCommand::class);
+            ->hasCommand(DownloadCapCommand::class)
+            ->hasCommand(DownloadCoordinatesCommand::class);
     }
 
     public function packageRegistered(): void
@@ -38,6 +42,7 @@ class IstatGeographyServiceProvider extends PackageServiceProvider
 
         $this->app->singleton(GeographyImportService::class);
         $this->app->singleton(CapImportService::class);
+        $this->app->singleton(CoordinatesImportService::class);
     }
 
     public function packageBooted(): void
