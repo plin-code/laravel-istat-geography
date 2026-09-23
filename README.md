@@ -19,6 +19,7 @@ A Laravel package for importing and managing Italian geographical data from ISTA
 
 - 🇮🇹 Import Italian regions, provinces, and municipalities from ISTAT
 - 📮 Import Italian postal codes (CAP) with support for multi-CAP municipalities
+- 📍 Optional latitude and longitude for every municipality
 - 🔄 Incremental updates: add new records, update changes, soft-delete removed ones
 - 📊 Daily CSV caching to avoid unnecessary requests
 - 🔗 Eloquent models with hierarchical relationships
@@ -85,6 +86,9 @@ php artisan geography:import
 | `--cap` | Also import postal codes (CAP) after ISTAT data |
 | `--cap-only` | Import only postal codes, skip ISTAT data (requires existing municipalities) |
 | `--cap-file=<path>` | Use a local JSON file for CAP data instead of downloading |
+| `--coordinates` | Also import municipality coordinates (latitude and longitude) after ISTAT data |
+| `--coordinates-only` | Import only coordinates, skip ISTAT data (requires existing municipalities) |
+| `--coordinates-file=<path>` | Use a local JSON file (plain or gzipped) for coordinates instead of downloading |
 
 #### Examples
 
@@ -97,6 +101,12 @@ php artisan geography:import --cap --cap-file=cap-dataset.json
 
 # Update only CAP on existing municipalities
 php artisan geography:import --cap-only --cap-file=cap-dataset.json
+
+# Import ISTAT data + coordinates
+php artisan geography:import --coordinates
+
+# Update only coordinates on existing municipalities
+php artisan geography:import --coordinates-only
 ```
 
 > **Note:** The remote GeoJSON with geometries is ~464MB. Using `--cap-file` with a preprocessed JSON file (~3MB) is recommended for better performance.
@@ -119,6 +129,26 @@ php artisan geography:download-cap --output=storage/app/my-cap.json
 After downloading, import with:
 ```bash
 php artisan geography:import --cap --cap-file=storage/app/cap-dataset.json
+```
+
+### `geography:download-coordinates`
+
+Downloads the coordinates dataset and saves it locally (decompressed) for offline import.
+
+```bash
+# Download from default URL (config/env)
+php artisan geography:download-coordinates
+
+# Download from custom URL
+php artisan geography:download-coordinates --url=https://example.com/coordinates.json.gz
+
+# Specify output path
+php artisan geography:download-coordinates --output=storage/app/my-coordinates.json
+```
+
+After downloading, import with:
+```bash
+php artisan geography:import --coordinates-only --coordinates-file=storage/app/coordinates-dataset.json
 ```
 
 ### `geography:update`
@@ -178,6 +208,7 @@ The `config/istat-geography.php` file allows you to customize:
 - **Model classes**: Use your own model classes by extending the base ones
 - **CSV URL**: Change the ISTAT data source URL (also via `ISTAT_CSV_URL` env)
 - **CAP GeoJSON URL**: Change the CAP data source URL (also via `CAP_GEOJSON_URL` env)
+- **Coordinates**: Import coordinates on every `geography:import` (also via `ISTAT_IMPORT_COORDINATES` env) and change the dataset URL (also via `ISTAT_COORDINATES_URL` env)
 - **Temporary file name**: Customize the cache file name
 
 ### Database Connection
@@ -190,6 +221,27 @@ ISTAT_DB_CONNECTION=geography
 
 > [!NOTE]
 > The `connection` config key is additive and fully backward compatible. If you published the config file before this option existed, the package falls back to your default database connection (`config('database.default')`), so no action is required on upgrade. To opt into a custom connection, either republish the config file or set the `ISTAT_DB_CONNECTION` environment variable.
+
+### Municipality Coordinates
+
+Coordinates are optional. The `extend_municipalities_with_coordinates` migration adds two nullable columns, `latitude` and `longitude`, to the municipalities table, and they stay empty until you import them.
+
+Import them once with `--coordinates`, or enable the import on every `geography:import` run:
+
+```dotenv
+ISTAT_IMPORT_COORDINATES=true
+```
+
+Each municipality gets one representative point of its administrative area: the centroid of the municipal boundary when it falls inside the municipality, otherwise a point guaranteed to be inside it. The point is not the town hall or the main inhabited centre, so for large or irregular municipalities it can be a few kilometres away from the town centre (and sometimes in open countryside). It is meant for maps, sorting by distance and proximity searches, not for navigation.
+
+`geography:update` never overwrites coordinates, because they are not ISTAT fields. When ISTAT adds a new municipality, it gets coordinates the next time you run the coordinates import with an updated dataset.
+
+```php
+$municipality = Municipality::where('istat_code', '058091')->first();
+
+$municipality->latitude;  // 41.8853588
+$municipality->longitude; // 12.4607809
+```
 
 ### Example Configuration
 
@@ -254,6 +306,7 @@ Region::istatFields();       // ['name', 'istat_code']
 Province::istatFields();     // ['name', 'code', 'istat_code', 'region_id']
 Municipality::istatFields(); // ['name', 'istat_code', 'province_id', 'bel_code']
 Municipality::capFields();   // ['postal_code', 'postal_codes']
+Municipality::coordinateFields(); // ['latitude', 'longitude']
 ```
 
 ### Extending Models
@@ -329,6 +382,8 @@ Remember to update the `models` section in the configuration file to point to yo
 - `bel_code` (string, nullable) - Cadastral/Belfiore code for CAP matching
 - `postal_code` (string, nullable) - Primary postal code (CAP)
 - `postal_codes` (string, nullable) - Range of postal codes for large municipalities (e.g., "00118-00199")
+- `latitude` (decimal 10,7, nullable): latitude of the representative point (WGS 84)
+- `longitude` (decimal 10,7, nullable): longitude of the representative point (WGS 84)
 - `created_at`, `updated_at`, `deleted_at`
 
 ## Relationships
@@ -392,7 +447,28 @@ Geographic data (regions, provinces, municipalities) is sourced from [ISTAT](htt
 
 Postal code data is sourced from [Zornade Data Downloads](https://zornade.com/data-downloads/).
 
+### Municipality Coordinates
+
+Coordinates are derived from the ISTAT municipal boundaries (Confini Amministrativi) published by [Zornade Data Downloads](https://zornade.com/data-downloads/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). If you show these coordinates in your product, keep this attribution visible:
+
+> Source: ISTAT, administrative boundaries (CC BY 4.0). Data processed by Zornade (https://zornade.com).
+
+The points were computed by this package from the boundary polygons (centroid in EPSG:3035, or a point on surface when the centroid falls outside the polygon), so they are an adaptation of the original data. The dataset file includes the same attribution, license and generation date in its `meta` section.
+
 A huge thanks to [Zornade](https://github.com/zornade) for their incredible work in making Italian public data freely available. Their dedication to open data helps developers build better applications for Italian users.
+
+### Regenerating the Coordinates Dataset
+
+Maintainers can rebuild the dataset with `scripts/build-coordinates-dataset.php` (PHP with `pdo_sqlite`, plus Docker for the official GDAL image). It downloads the boundaries and the current ISTAT list, computes one point per municipality and writes `build/municipality_coordinates_dataset.json.gz`:
+
+```bash
+php scripts/build-coordinates-dataset.php
+
+# Optional sanity check with the Zornade reverse geocoding API
+ZORNADE_TOKEN=your-token php scripts/build-coordinates-dataset.php --spot-check
+```
+
+Municipalities created by a merger after the boundaries were published are computed on the union of their predecessors, listed in `MERGED_MUNICIPALITIES` inside the script. The script stops with an error when a municipality has no polygon and no merger entry.
 
 ## Contributing
 
