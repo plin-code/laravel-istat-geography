@@ -34,4 +34,15 @@ class MunicipalityFactory extends Factory
             'postal_codes' => $postalCodes ?? $postalCode,
         ]);
     }
+
+    /**
+     * Configure the municipality with coordinates.
+     */
+    public function withCoordinates(float $latitude, float $longitude): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+        ]);
+    }
 }

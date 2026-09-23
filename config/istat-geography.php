@@ -39,4 +39,10 @@ return [
         'geojson_url' => env('CAP_GEOJSON_URL', 'https://github.com/plin-code/laravel-istat-geography/releases/download/data-geo-v1/municipality_boundaries.geojson.gz'),
         'temp_filename' => 'cap_dataset.json',
     ],
+
+    'coordinates' => [
+        'enabled' => env('ISTAT_IMPORT_COORDINATES', false),
+        'dataset_url' => env('ISTAT_COORDINATES_URL', 'https://github.com/plin-code/laravel-istat-geography/releases/download/data-coordinates-v1/municipality_coordinates_dataset.json.gz'),
+        'temp_filename' => 'coordinates_dataset.json',
+    ],
 ];
