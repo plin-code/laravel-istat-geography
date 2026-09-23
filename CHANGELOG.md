@@ -2,6 +2,12 @@
 
 All notable changes to `laravel-istat-geography` will be documented in this file.
 
+## ISTAT Coordinates Data v1 - 2026-09-23
+
+One point per Italian municipality (centroid, or point on surface when the centroid falls outside), keyed by ISTAT code. Computed from the ISTAT administrative boundaries, licensed under CC BY 4.0.
+
+The dataset is sourced from https://zornade.com/data-downloads/ | awesome work by Zornade.
+
 ## v1.3.0 - Custom Database Connection Support - 2026-06-26
 
 ### 🔌 Custom Database Connection Support
@@ -20,9 +26,11 @@ Set the connection via the new config key or env variable:
 // config/istat-geography.php
 'connection' => env('ISTAT_DB_CONNECTION', env('DB_CONNECTION')),
 
+
 ```
 ```dotenv
 ISTAT_DB_CONNECTION=geography
+
 
 ```
 #### Backward compatibility
@@ -62,6 +70,7 @@ php artisan geography:import --cap --cap-file=cap-dataset.json
 
 # Update only CAP on existing data
 php artisan geography:import --cap-only --cap-file=cap-dataset.json
+
 
 
 ```
@@ -147,6 +156,7 @@ composer require plin-code/laravel-istat-geography
 
 
 
+
 ```
 #### 🔧 Configuration
 
@@ -161,6 +171,7 @@ php artisan vendor:publish --tag="istat-geography-config"
 
 
 
+
 ```
 #### 📦 Usage
 
@@ -168,6 +179,7 @@ Import geographical data:
 
 ```bash
 php artisan istat:geography:import
+
 
 
 
