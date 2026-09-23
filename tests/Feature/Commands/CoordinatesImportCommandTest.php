@@ -53,7 +53,10 @@ test('import command with --coordinates-only and --coordinates-file imports only
 
     Http::fake();
 
-    $this->artisan('geography:import --coordinates-only --coordinates-file='.__DIR__.'/../../Fixtures/municipality_coordinates_dataset.json')
+    $this->artisan('geography:import', [
+        '--coordinates-only' => true,
+        '--coordinates-file' => __DIR__.'/../../Fixtures/municipality_coordinates_dataset.json',
+    ])
         ->doesntExpectOutput('Starting geographical data import...')
         ->expectsOutput('Coordinates import completed! Updated 1 municipalities.')
         ->assertSuccessful();
