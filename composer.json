@@ -25,8 +25,7 @@
         "php": "^8.3",
         "spatie/laravel-package-tools": "^1.16",
         "illuminate/contracts": "^12.0 || ^13.0",
-        "league/csv": "^9.24",
-        "guzzlehttp/guzzle": "^7.0"
+        "league/csv": "^9.24"
     },
     "suggest": {
         "laravel/boost": "2.5 or higher reads the AI guidelines shipped in resources/boost"
