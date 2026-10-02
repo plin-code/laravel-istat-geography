@@ -425,6 +425,12 @@ Artisan::command('geography:import', function () {
 })->purpose('Import regions, provinces and municipalities from ISTAT');
 ```
 
+## AI guidelines (Laravel Boost)
+
+This package ships AI guidelines for [Laravel Boost](https://github.com/laravel/boost) at `resources/boost/guidelines/core.blade.php`, the path the Boost documentation gives package authors. It is a short, always in context brief on the three models, their tables, columns and relations, the `geography:*` commands and the config keys, so an agent uses the package models instead of creating its own regions, provinces or municipalities tables.
+
+Install Boost 2.5 or higher with `composer require laravel/boost --dev` then `php artisan boost:install`, selecting this package when Boost asks which third party guidelines to install. On an app that already has Boost installed, `php artisan boost:update --discover` offers the newly detected package.
+
 ## Testing
 
 Run the test suite:
