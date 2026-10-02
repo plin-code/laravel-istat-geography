@@ -31,7 +31,7 @@ A Laravel package for importing and managing Italian geographical data from ISTA
 ## Requirements
 
 - PHP 8.3+
-- Laravel 11.0+ or 12.0+
+- Laravel 12.0+ or 13.0+
 - league/csv 9.0+
 - guzzlehttp/guzzle 7.0+
 
@@ -128,7 +128,7 @@ php artisan geography:download-cap --output=storage/app/my-cap.json
 
 After downloading, import with:
 ```bash
-php artisan geography:import --cap --cap-file=storage/app/cap-dataset.json
+php artisan geography:import --cap --cap-file=storage/app/cap-boundaries.geojson
 ```
 
 ### `geography:download-coordinates`
@@ -204,7 +204,7 @@ php artisan vendor:publish --provider="PlinCode\IstatGeography\IstatGeographySer
 The `config/istat-geography.php` file allows you to customize:
 
 - **Database connection**: Choose which database connection the package tables should use (defaults to the main connection)
-- **Table names**: Customize the database table names
+- **Table names**: Customize the database table names (set them before running the migrations)
 - **Model classes**: Use your own model classes by extending the base ones
 - **CSV URL**: Change the ISTAT data source URL (also via `ISTAT_CSV_URL` env)
 - **CAP GeoJSON URL**: Change the CAP data source URL (also via `CAP_GEOJSON_URL` env)
@@ -221,6 +221,20 @@ ISTAT_DB_CONNECTION=geography
 
 > [!NOTE]
 > The `connection` config key is additive and fully backward compatible. If you published the config file before this option existed, the package falls back to your default database connection (`config('database.default')`), so no action is required on upgrade. To opt into a custom connection, either republish the config file or set the `ISTAT_DB_CONNECTION` environment variable.
+
+### Table Names
+
+The `tables` key controls the table names used by both the migrations and the models. Set it before running the migrations for the first time: the migrations create the tables (and their foreign keys) with the configured names, and the models read and write the same tables.
+
+```php
+'tables' => [
+    'regions' => 'geo_regions',
+    'provinces' => 'geo_provinces',
+    'municipalities' => 'geo_municipalities',
+],
+```
+
+Changing the names after the tables already exist does not rename them. In that case rename the tables yourself with a migration, then update the config. A custom model that defines its own `$table` property keeps using that table.
 
 ### Municipality Coordinates
 
@@ -353,7 +367,7 @@ class Municipality extends BaseMunicipality
 }
 ```
 
-Remember to update the `models` section in the configuration file to point to your custom classes.
+Remember to update the `models` section in the configuration file to point to your custom classes. The import and update services and the model relationships (for example `$region->provinces` or `$municipality->province`) then use your classes.
 
 ## Database Structure
 
