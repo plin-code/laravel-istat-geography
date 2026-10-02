@@ -59,6 +59,6 @@ class Region extends Model
 
     public function provinces(): HasMany
     {
-        return $this->hasMany(Province::class);
+        return $this->hasMany(config('istat-geography.models.province', Province::class), 'region_id');
     }
 }
