@@ -28,6 +28,9 @@
         "league/csv": "^9.24",
         "guzzlehttp/guzzle": "^7.0"
     },
+    "suggest": {
+        "laravel/boost": "2.5 or higher reads the AI guidelines shipped in resources/boost"
+    },
     "require-dev": {
         "laravel/pint": "^1.14",
         "nunomaduro/collision": "^8.1.1||^7.10.0",
