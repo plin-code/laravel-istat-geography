@@ -106,6 +106,6 @@ class Municipality extends Model
 
     public function province(): BelongsTo
     {
-        return $this->belongsTo(Province::class);
+        return $this->belongsTo(config('istat-geography.models.province', Province::class), 'province_id', 'id');
     }
 }

@@ -64,11 +64,11 @@ class Province extends Model
 
     public function region(): BelongsTo
     {
-        return $this->belongsTo(Region::class);
+        return $this->belongsTo(config('istat-geography.models.region', Region::class), 'region_id', 'id');
     }
 
     public function municipalities(): HasMany
     {
-        return $this->hasMany(Municipality::class);
+        return $this->hasMany(config('istat-geography.models.municipality', Municipality::class), 'province_id');
     }
 }
