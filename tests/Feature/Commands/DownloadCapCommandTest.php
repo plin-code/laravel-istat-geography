@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,12 +18,27 @@ test('download cap command downloads geojson from default url', function () {
         config('istat-geography.cap.geojson_url') => Http::response($geojsonContent, 200),
     ]);
 
-    $outputPath = storage_path('app/cap-dataset.json');
+    $outputPath = storage_path('app/cap-boundaries.geojson');
+    @unlink($outputPath);
 
     $this->artisan('geography:download-cap')
         ->expectsOutputToContain('Downloading CAP GeoJSON from:')
         ->expectsOutputToContain('Download completed!')
         ->assertSuccessful();
+
+    expect(file_get_contents($outputPath))->toBe($geojsonContent);
+
+    @unlink($outputPath);
+});
+
+test('download cap command help documents the real default output path', function () {
+    $description = Artisan::all()['geography:download-cap']
+        ->getDefinition()
+        ->getOption('output')
+        ->getDescription();
+
+    expect($description)->toContain('storage/app/cap-boundaries.geojson')
+        ->not->toContain('cap-dataset.json');
 });
 
 test('download cap command accepts custom url', function () {
