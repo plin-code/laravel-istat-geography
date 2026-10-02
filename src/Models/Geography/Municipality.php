@@ -91,6 +91,14 @@ class Municipality extends Model
         ];
     }
 
+    /**
+     * Get the table associated with the model, honouring the configured table name.
+     */
+    public function getTable(): string
+    {
+        return $this->table ?? config('istat-geography.tables.municipalities', 'municipalities');
+    }
+
     protected static function newFactory(): MunicipalityFactory
     {
         return MunicipalityFactory::new();
