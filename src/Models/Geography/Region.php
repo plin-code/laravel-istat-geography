@@ -44,6 +44,14 @@ class Region extends Model
         ];
     }
 
+    /**
+     * Get the table associated with the model, honouring the configured table name.
+     */
+    public function getTable(): string
+    {
+        return $this->table ?? config('istat-geography.tables.regions', 'regions');
+    }
+
     protected static function newFactory(): RegionFactory
     {
         return RegionFactory::new();
