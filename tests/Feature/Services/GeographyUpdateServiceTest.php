@@ -774,7 +774,7 @@ test('update service saves bel_code on new municipalities', function () {
     $region = Region::create(['name' => 'Piemonte', 'istat_code' => '01']);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '001001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -805,7 +805,7 @@ test('update service fills a null bel_code on existing municipalities', function
     $region = Region::create(['name' => 'Piemonte', 'istat_code' => '01']);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '001001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
