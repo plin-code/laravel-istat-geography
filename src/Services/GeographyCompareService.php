@@ -118,6 +118,12 @@ final class GeographyCompareService
                 'name' => $values[5],
                 'province_istat_code' => $provinceIstatCode,
             ];
+
+            // A missing or malformed BEL code is left out so it never overwrites a stored value
+            $belCode = trim($values[19] ?? '');
+            if (preg_match('/^[A-Z]\d{3}$/', $belCode) === 1) {
+                $municipalities[$municipalityIstatCode]['bel_code'] = $belCode;
+            }
         }
 
         return [

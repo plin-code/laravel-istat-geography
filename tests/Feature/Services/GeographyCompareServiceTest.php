@@ -20,7 +20,7 @@ function mockIstatResponse(string $csvContent): void
 
 function createCsvHeader(): string
 {
-    return "Codice Regione;Codice dell'Unità territoriale sovracomunale (valida a fini statistici);Codice Provincia (Storico)(1);Progressivo del Comune (2);Codice Comune formato alfanumerico;Denominazione (Italiana e straniera);Codice Ripartizione Geografica;Ripartizione geografica;Denominazione regione;Denominazione dell'Unità territoriale sovracomunale (valida a fini statistici);Denominazione in italiano;Denominazione della Provincia;Flag Comune capoluogo di provincia/città metropolitana/libero consorzio;Sigla automobilistica;Codice Comune formato numerico;Codice Comune 110 (107) (3);Codice Comune 103 (1995) (3);Codice Catastale;Codice NUTS1 2010;Codice NUTS2 2010 (3);Codice NUTS3 2010;Codice NUTS1 2021;Codice NUTS2 2021 (3);Codice NUTS3 2021\n";
+    return "Codice Regione;Codice dell'Unità territoriale sovracomunale (valida a fini statistici);Codice Provincia (Storico)(1);Progressivo del Comune (2);Codice Comune formato alfanumerico;Denominazione (Italiana e straniera);Denominazione in italiano;Denominazione altra lingua;Codice Ripartizione Geografica;Ripartizione geografica;Denominazione Regione;Denominazione dell'Unità territoriale sovracomunale (valida a fini statistici);Tipologia di Unità territoriale sovracomunale;Flag Comune capoluogo di provincia/città metropolitana/libero consorzio;Sigla automobilistica;Codice Comune formato numerico;Codice Comune numerico con 110 province (dal 2010 al 2016);Codice Comune numerico con 107 province (dal 2006 al 2009);Codice Comune numerico con 103 province (dal 1995 al 2005);Codice Catastale del comune;Codice NUTS1 2021;Codice NUTS2 2021 (3);Codice NUTS3 2021;Codice NUTS1 2024;Codice NUTS2 2024 (3);Codice NUTS3 2024\n";
 }
 
 function createCsvRow(
@@ -30,9 +30,10 @@ function createCsvRow(
     string $municipalityName,
     string $regionName,
     string $provinceName,
-    string $provinceAbbr
+    string $provinceAbbr,
+    string $belCode = ''
 ): string {
-    return "{$regionCode};001;{$provinceCode};001;{$municipalityCode};{$municipalityName};1;Nord-ovest;{$regionName};{$provinceName};{$regionName};{$provinceName};0;{$provinceAbbr};{$municipalityCode};{$municipalityCode};{$municipalityCode};A074;ITC1;ITC1;ITC11;ITC1;ITC1;ITC11\n";
+    return "{$regionCode};201;{$provinceCode};001;{$municipalityCode};{$municipalityName};{$municipalityName};;1;Nord-ovest;{$regionName};{$provinceName};3;0;{$provinceAbbr};{$municipalityCode};{$municipalityCode};{$municipalityCode};{$municipalityCode};{$belCode};ITC;ITC1;ITC11;ITC;ITC1;ITC11\n";
 }
 
 test('compare service identifies new records when database is empty', function () {
@@ -203,8 +204,7 @@ test('compare service ignores soft-deleted records', function () {
 });
 
 test('compare service returns no changes when data matches', function () {
-    // Create matching data in DB - note that the import service uses $values[14] (Codice Comune formato numerico)
-    // as the province code, not the abbreviation at $values[13]
+    // Create matching data in DB
     $region = Region::create([
         'name' => 'Piemonte',
         'istat_code' => '01',
@@ -214,7 +214,7 @@ test('compare service returns no changes when data matches', function () {
     // which is the municipality numeric code (010001) based on how GeographyImportService works
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001', // This matches $values[14] from CSV
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -275,4 +275,102 @@ test('entity comparison result correctly reports has changes', function () {
         ->and($result->regions->hasChanges())->toBeTrue()
         ->and($result->provinces->hasChanges())->toBeTrue()
         ->and($result->municipalities->hasChanges())->toBeTrue();
+});
+
+function createTorinoHierarchy(?string $belCode): void
+{
+    $region = Region::create(['name' => 'Piemonte', 'istat_code' => '01']);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => 'TO',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '010001',
+        'bel_code' => $belCode,
+        'province_id' => $province->id,
+    ]);
+}
+
+test('compare service includes bel_code in new municipalities', function () {
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO', 'L219')
+    );
+
+    $result = app(GeographyCompareService::class)->compare();
+
+    expect($result->municipalities->new['010001']['bel_code'])->toBe('L219');
+});
+
+test('compare service reports a null bel_code as modified', function () {
+    createTorinoHierarchy(null);
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO', 'L219')
+    );
+
+    $result = app(GeographyCompareService::class)->compare();
+
+    expect($result->municipalities->countModified())->toBe(1)
+        ->and($result->municipalities->modified['010001']['changes'])->toBe([
+            'bel_code' => ['old' => null, 'new' => 'L219'],
+        ]);
+});
+
+test('compare service reports a different bel_code as modified', function () {
+    createTorinoHierarchy('X000');
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO', 'L219')
+    );
+
+    $result = app(GeographyCompareService::class)->compare();
+
+    expect($result->municipalities->modified['010001']['changes'])->toBe([
+        'bel_code' => ['old' => 'X000', 'new' => 'L219'],
+    ]);
+});
+
+test('compare service does not report a matching bel_code', function () {
+    createTorinoHierarchy('L219');
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO', 'L219')
+    );
+
+    $result = app(GeographyCompareService::class)->compare();
+
+    expect($result->municipalities->countModified())->toBe(0);
+});
+
+test('compare service ignores a malformed bel_code in the CSV', function () {
+    createTorinoHierarchy('L219');
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO', 'ITC11')
+    );
+
+    $result = app(GeographyCompareService::class)->compare();
+
+    expect($result->municipalities->countModified())->toBe(0);
+});
+
+test('compare service ignores an empty bel_code in the CSV', function () {
+    createTorinoHierarchy('L219');
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO', '')
+    );
+
+    $result = app(GeographyCompareService::class)->compare();
+
+    expect($result->municipalities->countModified())->toBe(0);
 });
