@@ -10,10 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use PlinCode\IstatGeography\Database\Factories\MunicipalityFactory;
+use PlinCode\IstatGeography\Models\Geography\Concerns\HasCustomConnection;
 
 class Municipality extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasCustomConnection, HasFactory, HasUuids, SoftDeletes;
 
     protected $keyType = 'string';
 
@@ -31,7 +32,22 @@ class Municipality extends Model
         'bel_code',
         'postal_code',
         'postal_codes',
+        'latitude',
+        'longitude',
     ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'latitude' => 'float',
+            'longitude' => 'float',
+        ];
+    }
 
     /**
      * Get the list of ISTAT fields that can be updated by the geography:update command.
@@ -62,6 +78,27 @@ class Municipality extends Model
         ];
     }
 
+    /**
+     * Get the list of coordinate fields that can be updated by the geography:import --coordinates command.
+     *
+     * @return list<string>
+     */
+    public static function coordinateFields(): array
+    {
+        return [
+            'latitude',
+            'longitude',
+        ];
+    }
+
+    /**
+     * Get the table associated with the model, honouring the configured table name.
+     */
+    public function getTable(): string
+    {
+        return $this->table ?? config('istat-geography.tables.municipalities', 'municipalities');
+    }
+
     protected static function newFactory(): MunicipalityFactory
     {
         return MunicipalityFactory::new();
@@ -69,6 +106,6 @@ class Municipality extends Model
 
     public function province(): BelongsTo
     {
-        return $this->belongsTo(Province::class);
+        return $this->belongsTo(config('istat-geography.models.province', Province::class), 'province_id', 'id');
     }
 }

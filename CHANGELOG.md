@@ -2,6 +2,115 @@
 
 All notable changes to `laravel-istat-geography` will be documented in this file.
 
+## v1.5.0 - Boost guidelines and config fixes - 2026-10-02
+
+### 🤖 Boost guidelines and config fixes
+
+#### What's new
+
+- AI guidelines for [Laravel Boost](https://github.com/laravel/boost) in `resources/boost/guidelines/core.blade.php`: models, tables, relations, `geography:*` commands and config keys, so an agent uses the package models instead of creating its own geography tables. `laravel/boost` is only suggested, never required. (#20)
+
+#### Fixes
+
+- The `tables` config now renames the tables. The base migration and the models use the configured names. Set them before running the migrations: changing them later does not rename existing tables. A `$table` defined on your own model still wins. (#21)
+- Relations (`provinces()`, `region()`, `municipalities()`, `province()`) now return the classes configured under `models`, with unchanged foreign keys. (#21)
+- `geography:download-cap --help` now shows the real default output, `storage/app/cap-boundaries.geojson`. The README import example uses the same path. (#21)
+- README requirements now say Laravel 12 or 13. (#21)
+
+#### Dependencies
+
+- `guzzlehttp/guzzle` is no longer required. The package only uses Laravel's `Http` facade, so the app's Laravel install picks the Guzzle version (7 on Laravel 12, 7 or 8 on Laravel 13). (#22)
+
+Defaults are unchanged, no new migration.
+
+**Full Changelog**: https://github.com/plin-code/laravel-istat-geography/compare/v1.4.0...v1.5.0
+
+## v1.4.0 - Municipality Coordinates Support - 2026-09-23
+
+### 📍 Municipality Coordinates
+
+This release adds optional latitude and longitude for every Italian municipality.
+
+#### What's new
+
+New fields on municipalities table
+
+- `latitude` - decimal, nullable
+- `longitude` - decimal, nullable
+
+One point per municipality: the centroid, or a point on surface when the centroid falls outside the boundary. Coordinates are never overwritten by `geography:update`.
+
+#### New Artisan commands
+
+- `geography:import --coordinates` - imports ISTAT data and coordinates in one shot
+- `geography:import --coordinates-only` - updates only coordinates on existing municipalities
+- `geography:import --coordinates-file=<path>` - uses a local JSON file (plain or gzipped) instead of downloading
+- `geography:download-coordinates` - downloads the coordinates dataset locally for offline use
+
+#### New config
+
+`coordinates.enabled` (`ISTAT_IMPORT_COORDINATES`) imports coordinates on every `geography:import`.
+
+#### New migration
+
+`extend_municipalities_with_coordinates`, run `php artisan migrate` to apply.
+
+#### Recommended usage
+
+```bash
+# First time: import everything
+php artisan geography:import --cap --coordinates
+
+# Update only coordinates on existing data
+php artisan geography:import --coordinates-only
+
+
+```
+#### Data source
+
+Coordinates are computed from the ISTAT administrative boundaries (CC BY 4.0) sourced from [Zornade Data Downloads](https://zornade.com/data-downloads/). A huge thanks to [Zornade](https://github.com/zornade) for their incredible work in making Italian public data freely available as open data. 🙏
+
+CAP and boundaries datasets are derived from OpenStreetMap and licensed under ODbL (© OpenStreetMap contributors).
+
+## ISTAT Coordinates Data v1 - 2026-09-23
+
+One point per Italian municipality (centroid, or point on surface when the centroid falls outside), keyed by ISTAT code. Computed from the ISTAT administrative boundaries, licensed under CC BY 4.0.
+
+The dataset is sourced from https://zornade.com/data-downloads/ | awesome work by Zornade.
+
+## v1.3.0 - Custom Database Connection Support - 2026-06-26
+
+### 🔌 Custom Database Connection Support
+
+This release lets you store ISTAT geographical data on a database connection of your choice, instead of the application default.
+
+#### What's new
+
+Models (Region, Province, Municipality) and the import, update, compare and CAP services now resolve their connection from configuration. You can point the whole package at a dedicated connection (a separate schema, a read replica, a different driver) without touching the rest of your app.
+
+#### Configuration
+
+Set the connection via the new config key or env variable:
+
+```php
+// config/istat-geography.php
+'connection' => env('ISTAT_DB_CONNECTION', env('DB_CONNECTION')),
+
+
+
+
+```
+```dotenv
+ISTAT_DB_CONNECTION=geography
+
+
+
+
+```
+#### Backward compatibility
+
+Fully backward compatible. If you do not set a connection (including configs published before this option existed), the package falls back to the application default connection. No action needed on existing installs.
+
 ## v1.2.0 - CAP (Postal Code) Support - 2026-03-19
 
 ### 📮 CAP (Postal Code) Support
@@ -35,6 +144,10 @@ php artisan geography:import --cap --cap-file=cap-dataset.json
 
 # Update only CAP on existing data
 php artisan geography:import --cap-only --cap-file=cap-dataset.json
+
+
+
+
 
 ```
 > The remote **GeoJSON** with geometries is ~464 MB. Using --cap-file with the preprocessed properties-only dataset (~3 MB) is strongly recommended.
@@ -118,6 +231,10 @@ composer require plin-code/laravel-istat-geography
 
 
 
+
+
+
+
 ```
 #### 🔧 Configuration
 
@@ -131,6 +248,10 @@ php artisan vendor:publish --tag="istat-geography-config"
 
 
 
+
+
+
+
 ```
 #### 📦 Usage
 
@@ -138,6 +259,10 @@ Import geographical data:
 
 ```bash
 php artisan istat:geography:import
+
+
+
+
 
 
 

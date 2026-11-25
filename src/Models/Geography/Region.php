@@ -10,10 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use PlinCode\IstatGeography\Database\Factories\RegionFactory;
+use PlinCode\IstatGeography\Models\Geography\Concerns\HasCustomConnection;
 
 class Region extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasCustomConnection, HasFactory, HasUuids, SoftDeletes;
 
     protected $keyType = 'string';
 
@@ -43,6 +44,14 @@ class Region extends Model
         ];
     }
 
+    /**
+     * Get the table associated with the model, honouring the configured table name.
+     */
+    public function getTable(): string
+    {
+        return $this->table ?? config('istat-geography.tables.regions', 'regions');
+    }
+
     protected static function newFactory(): RegionFactory
     {
         return RegionFactory::new();
@@ -50,6 +59,6 @@ class Region extends Model
 
     public function provinces(): HasMany
     {
-        return $this->hasMany(Province::class);
+        return $this->hasMany(config('istat-geography.models.province', Province::class), 'region_id');
     }
 }

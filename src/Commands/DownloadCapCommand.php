@@ -12,7 +12,7 @@ class DownloadCapCommand extends Command
 {
     protected $signature = 'geography:download-cap
                             {--url= : Custom URL to download from (overrides config)}
-                            {--output= : Output file path (default: storage/app/cap-dataset.json)}';
+                            {--output= : Output file path (default: storage/app/cap-boundaries.geojson)}';
 
     protected $description = 'Download CAP GeoJSON data and save it locally for offline import';
 

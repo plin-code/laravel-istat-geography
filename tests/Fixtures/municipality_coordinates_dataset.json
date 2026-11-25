@@ -1,0 +1,12 @@
+{
+    "meta": {
+        "name": "Italian municipalities representative points",
+        "count": 2,
+        "crs": "EPSG:4326",
+        "license": "CC BY 4.0"
+    },
+    "municipalities": [
+        {"istat_code": "058091", "bel_code": "H501", "name": "Roma", "latitude": 41.8853588, "longitude": 12.4607809, "method": "centroid"},
+        {"istat_code": "037006", "bel_code": "A944", "name": "Bologna", "latitude": 44.4979899, "longitude": 11.3334212, "method": "centroid"}
+    ]
+}

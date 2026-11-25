@@ -46,3 +46,19 @@ test('capFields returns the correct updatable CAP fields for Municipality', func
         ->not->toContain('name')
         ->not->toContain('istat_code');
 });
+
+test('coordinateFields returns the coordinate fields, which are not ISTAT fields', function () {
+    expect(Municipality::coordinateFields())
+        ->toBe(['latitude', 'longitude'])
+        ->and(Municipality::istatFields())
+        ->not->toContain('latitude')
+        ->not->toContain('longitude');
+});
+
+test('municipality casts coordinates to floats', function () {
+    $municipality = Municipality::factory()->withCoordinates(41.8853588, 12.4607809)->create();
+
+    expect($municipality->fresh())
+        ->latitude->toBe(41.8853588)
+        ->longitude->toBe(12.4607809);
+});

@@ -11,10 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use PlinCode\IstatGeography\Database\Factories\ProvinceFactory;
+use PlinCode\IstatGeography\Models\Geography\Concerns\HasCustomConnection;
 
 class Province extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasCustomConnection, HasFactory, HasUuids, SoftDeletes;
 
     protected $keyType = 'string';
 
@@ -48,6 +49,14 @@ class Province extends Model
         ];
     }
 
+    /**
+     * Get the table associated with the model, honouring the configured table name.
+     */
+    public function getTable(): string
+    {
+        return $this->table ?? config('istat-geography.tables.provinces', 'provinces');
+    }
+
     protected static function newFactory(): ProvinceFactory
     {
         return ProvinceFactory::new();
@@ -55,11 +64,11 @@ class Province extends Model
 
     public function region(): BelongsTo
     {
-        return $this->belongsTo(Region::class);
+        return $this->belongsTo(config('istat-geography.models.region', Region::class), 'region_id', 'id');
     }
 
     public function municipalities(): HasMany
     {
-        return $this->hasMany(Municipality::class);
+        return $this->hasMany(config('istat-geography.models.municipality', Municipality::class), 'province_id');
     }
 }
