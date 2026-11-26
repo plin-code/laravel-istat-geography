@@ -1,0 +1,31 @@
+name: commits
+
+on: pull_request
+
+jobs:
+  # every commit of a pull request against the rules of CONTRIBUTING.md, with the hook of .githooks: pull requests are
+  # merged with a rebase, so their commits reach main as they are. Dependabot writes its own messages.
+  commits:
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Check the commit messages
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          failed=0
+          for commit in $(git rev-list --reverse "$BASE..$HEAD"); do
+            git log -1 --format=%B "$commit" > "$RUNNER_TEMP/message"
+            if ! .githooks/commit-msg "$RUNNER_TEMP/message"; then
+              echo "::error::$(git log -1 --format='%h %s' "$commit")"
+              failed=1
+            fi
+          done
+          exit "$failed"
