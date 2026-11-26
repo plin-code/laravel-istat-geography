@@ -836,3 +836,28 @@ test('update service fills a null bel_code on existing municipalities', function
     expect($result['modified']['municipalities'])->toBe(1)
         ->and($municipality->fresh()->bel_code)->toBe('L219');
 });
+
+test('does not apply a move whose new province does not exist', function () {
+    $region = Region::create(['name' => 'Sardegna', 'istat_code' => '20']);
+    $olbiaTempio = Province::create(['name' => 'Olbia-Tempio', 'code' => 'OT', 'istat_code' => '104', 'region_id' => $region->id]);
+    $olbia = Municipality::create(['name' => 'Olbia', 'istat_code' => '104017', 'province_id' => $olbiaTempio->id]);
+
+    $empty = new \PlinCode\IstatGeography\Services\EntityComparisonResult([], [], []);
+    $comparison = new \PlinCode\IstatGeography\Services\ComparisonResult($empty, $empty, new \PlinCode\IstatGeography\Services\EntityComparisonResult(
+        new: [],
+        modified: ['090047' => [
+            'id' => $olbia->id,
+            'changes' => [
+                'istat_code' => ['old' => '104017', 'new' => '090047'],
+                'province_id' => ['old' => $olbiaTempio->id, 'new' => null],
+            ],
+            'province_istat_code' => '090',
+        ]],
+        suppressed: [],
+    ));
+
+    $result = app(\PlinCode\IstatGeography\Services\GeographyUpdateService::class)->applyModifications($comparison);
+
+    expect($result['modified']['municipalities'])->toBe(0)
+        ->and($olbia->fresh()->istat_code)->toBe('104017');
+});

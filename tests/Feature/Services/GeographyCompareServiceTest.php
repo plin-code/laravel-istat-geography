@@ -374,3 +374,217 @@ test('compare service ignores an empty bel_code in the CSV', function () {
 
     expect($result->municipalities->countModified())->toBe(0);
 });
+
+function createSardiniaWithOlbia(?string $belCode = 'G015', bool $withSassari = true): array
+{
+    $region = Region::create(['name' => 'Sardegna', 'istat_code' => '20']);
+    $sassari = $withSassari
+        ? Province::create(['name' => 'Sassari', 'code' => 'SS', 'istat_code' => '090', 'region_id' => $region->id])
+        : null;
+    $olbiaTempio = Province::create(['name' => 'Olbia-Tempio', 'code' => 'OT', 'istat_code' => '104', 'region_id' => $region->id]);
+    $olbia = Municipality::create([
+        'name' => 'Olbia',
+        'istat_code' => '104017',
+        'bel_code' => $belCode,
+        'province_id' => $olbiaTempio->id,
+    ]);
+
+    return [$sassari, $olbiaTempio, $olbia];
+}
+
+function olbiaInSassariCsv(): string
+{
+    return createCsvHeader().
+        createCsvRow('20', '090', '090047', 'Olbia', 'Sardegna', 'Sassari', 'SS', 'G015');
+}
+
+test('compare service keeps a municipality that moved province, matched by bel_code', function () {
+    [$sassari, $olbiaTempio, $olbia] = createSardiniaWithOlbia();
+    mockIstatResponse(olbiaInSassariCsv());
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->new)->toBeEmpty()
+        ->and($result->suppressed)->toBeEmpty()
+        ->and($result->modified)->toHaveKey('090047')
+        ->and($result->modified['090047']['id'])->toBe($olbia->id)
+        ->and($result->modified['090047']['changes']['istat_code'])->toBe(['old' => '104017', 'new' => '090047'])
+        ->and($result->modified['090047']['changes']['province_id'])->toBe(['old' => $olbiaTempio->id, 'new' => $sassari->id]);
+});
+
+test('compare service defers the province of a move into a province created by the same update', function () {
+    [, , $olbia] = createSardiniaWithOlbia('G015', withSassari: false);
+    mockIstatResponse(olbiaInSassariCsv());
+
+    $result = app(GeographyCompareService::class)->compare();
+
+    expect($result->provinces->new)->toHaveKey('090')
+        ->and($result->municipalities->new)->toBeEmpty()
+        ->and($result->municipalities->modified['090047']['id'])->toBe($olbia->id)
+        ->and($result->municipalities->modified['090047']['province_istat_code'])->toBe('090');
+});
+
+test('compare service matches a municipality without bel_code by its name', function () {
+    [$sassari, , $olbia] = createSardiniaWithOlbia(null);
+    mockIstatResponse(olbiaInSassariCsv());
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->new)->toBeEmpty()
+        ->and($result->suppressed)->toBeEmpty()
+        ->and($result->modified['090047']['id'])->toBe($olbia->id)
+        ->and($result->modified['090047']['changes']['bel_code'])->toBe(['old' => null, 'new' => 'G015'])
+        ->and($result->modified['090047']['changes']['province_id']['new'])->toBe($sassari->id);
+});
+
+test('compare service treats an empty stored bel_code as missing', function () {
+    [, , $olbia] = createSardiniaWithOlbia('');
+    mockIstatResponse(olbiaInSassariCsv());
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->modified['090047']['id'])->toBe($olbia->id);
+});
+
+test('compare service does not match by name a municipality with a different bel_code', function () {
+    createSardiniaWithOlbia('X999');
+    mockIstatResponse(olbiaInSassariCsv());
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->modified)->toBeEmpty()
+        ->and($result->new)->toHaveKey('090047')
+        ->and($result->suppressed)->toHaveKey('104017');
+});
+
+test('compare service matches homonym municipalities by name and region', function () {
+    $piemonte = Region::create(['name' => 'Piemonte', 'istat_code' => '01']);
+    $trentino = Region::create(['name' => 'Trentino-Alto Adige', 'istat_code' => '04']);
+    $torino = Province::create(['name' => 'Torino', 'code' => 'TO', 'istat_code' => '001', 'region_id' => $piemonte->id]);
+    $trento = Province::create(['name' => 'Trento', 'code' => 'TN', 'istat_code' => '022', 'region_id' => $trentino->id]);
+    $samonePiemonte = Municipality::create(['name' => 'Samone', 'istat_code' => '001998', 'province_id' => $torino->id]);
+    $samoneTrentino = Municipality::create(['name' => 'Samone', 'istat_code' => '022998', 'province_id' => $trento->id]);
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '001250', 'Samone', 'Piemonte', 'Torino', 'TO', 'H753').
+        createCsvRow('04', '022', '022165', 'Samone', 'Trentino-Alto Adige', 'Trento', 'TN', 'H754')
+    );
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->new)->toBeEmpty()
+        ->and($result->suppressed)->toBeEmpty()
+        ->and($result->modified['001250']['id'])->toBe($samonePiemonte->id)
+        ->and($result->modified['022165']['id'])->toBe($samoneTrentino->id);
+});
+
+test('compare service leaves ambiguous homonyms unmatched', function () {
+    $piemonte = Region::create(['name' => 'Piemonte', 'istat_code' => '01']);
+    $torino = Province::create(['name' => 'Torino', 'code' => 'TO', 'istat_code' => '001', 'region_id' => $piemonte->id]);
+    Municipality::create(['name' => 'Samone', 'istat_code' => '001998', 'province_id' => $torino->id]);
+    Municipality::create(['name' => 'Samone', 'istat_code' => '001999', 'province_id' => $torino->id]);
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '001250', 'Samone', 'Piemonte', 'Torino', 'TO', 'H753')
+    );
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->modified)->toBeEmpty()
+        ->and($result->new)->toHaveKey('001250')
+        ->and($result->suppressed)->toHaveKeys(['001998', '001999']);
+});
+
+test('compare service skips a move whose new istat_code belongs to a soft deleted municipality', function () {
+    [$sassari, $olbiaTempio, $olbia] = createSardiniaWithOlbia();
+    Municipality::create(['name' => 'Old Olbia', 'istat_code' => '090047', 'province_id' => $sassari->id])->delete();
+    mockIstatResponse(olbiaInSassariCsv());
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->modified)->toHaveKey('104017')
+        ->and($result->modified['104017']['changes'])->not->toHaveKey('istat_code')
+        ->and($result->modified['104017']['changes']['province_id'])->toBe(['old' => $olbiaTempio->id, 'new' => $sassari->id])
+        ->and($result->new)->toBeEmpty()
+        ->and($result->suppressed)->toBeEmpty()
+        ->and($result->skipped['090047'])->toBe(['id' => $olbia->id, 'name' => 'Olbia', 'from' => '104017', 'to' => '090047']);
+});
+
+test('compare service does not match by name alone a name that has homonyms', function () {
+    $piemonte = Region::create(['name' => 'Piemonte', 'istat_code' => '01']);
+    $trentino = Region::create(['name' => 'Trentino-Alto Adige', 'istat_code' => '04']);
+    $torino = Province::create(['name' => 'Torino', 'code' => 'TO', 'istat_code' => '001', 'region_id' => $piemonte->id]);
+    $trento = Province::create(['name' => 'Trento', 'code' => 'TN', 'istat_code' => '022', 'region_id' => $trentino->id]);
+    Municipality::create(['name' => 'Samone', 'istat_code' => '001998', 'province_id' => $torino->id]);
+    Municipality::create(['name' => 'Samone', 'istat_code' => '022165', 'bel_code' => 'H754', 'province_id' => $trento->id]);
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('04', '022', '022165', 'Samone', 'Trentino-Alto Adige', 'Trento', 'TN', 'H754').
+        createCsvRow('03', '015', '015999', 'Samone', 'Lombardia', 'Milano', 'MI', 'Z999')
+    );
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->modified)->toBeEmpty()
+        ->and($result->new)->toHaveKey('015999')
+        ->and($result->suppressed)->toHaveKey('001998');
+});
+
+test('compare service creates a new municipality reusing the code of a moving one after the move', function () {
+    [, , $olbia] = createSardiniaWithOlbia();
+    mockIstatResponse(
+        olbiaInSassariCsv().
+        createCsvRow('20', '104', '104017', 'Newtown', 'Sardegna', 'Olbia-Tempio', 'OT', 'H111')
+    );
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->skipped)->toBeEmpty()
+        ->and($result->modified['090047']['id'])->toBe($olbia->id)
+        ->and($result->new['104017']['waits_for_moved_code'])->toBeTrue();
+});
+
+test('compare service orders chained moves so that each code is left before it is reused', function () {
+    createTorinoHierarchy('L219');
+    $province = Province::where('istat_code', '001')->first();
+    $first = Municipality::create(['name' => 'First', 'istat_code' => '001002', 'bel_code' => 'A001', 'province_id' => $province->id]);
+    $second = Municipality::create(['name' => 'Second', 'istat_code' => '001003', 'bel_code' => 'A002', 'province_id' => $province->id]);
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO', 'L219').
+        createCsvRow('01', '001', '001002', 'Second', 'Piemonte', 'Torino', 'TO', 'A002').
+        createCsvRow('01', '001', '001004', 'First', 'Piemonte', 'Torino', 'TO', 'A001')
+    );
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->skipped)->toBeEmpty()
+        ->and(array_map('strval', array_keys($result->modified)))->toBe(['001004', '001002'])
+        ->and($result->modified['001004']['id'])->toBe($first->id)
+        ->and($result->modified['001002']['id'])->toBe($second->id);
+});
+
+test('compare service skips municipalities swapping their codes', function () {
+    createTorinoHierarchy('L219');
+    $province = Province::where('istat_code', '001')->first();
+    Municipality::create(['name' => 'First', 'istat_code' => '001002', 'bel_code' => 'A001', 'province_id' => $province->id]);
+    Municipality::create(['name' => 'Second', 'istat_code' => '001003', 'bel_code' => 'A002', 'province_id' => $province->id]);
+
+    mockIstatResponse(
+        createCsvHeader().
+        createCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO', 'L219').
+        createCsvRow('01', '001', '001003', 'First', 'Piemonte', 'Torino', 'TO', 'A001').
+        createCsvRow('01', '001', '001002', 'Second', 'Piemonte', 'Torino', 'TO', 'A002')
+    );
+
+    $result = app(GeographyCompareService::class)->compare()->municipalities;
+
+    expect($result->modified)->toBeEmpty()
+        ->and($result->new)->toBeEmpty()
+        ->and($result->suppressed)->toBeEmpty()
+        ->and(array_map('strval', array_keys($result->skipped)))->toEqualCanonicalizing(['001002', '001003']);
+});
