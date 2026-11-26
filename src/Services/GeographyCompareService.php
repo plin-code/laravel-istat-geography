@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PlinCode\IstatGeography\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use League\Csv\Bom;
 use League\Csv\Reader;
@@ -118,6 +119,15 @@ final class GeographyCompareService
                 'name' => $values[5],
                 'province_istat_code' => $provinceIstatCode,
             ];
+
+            // A missing or malformed Belfiore (cadastral) code is left out so it never overwrites a stored value
+            $belCode = trim($values[19] ?? '');
+            if (preg_match('/^[A-Z]\d{3}$/', $belCode) === 1) {
+                $municipalities[$municipalityIstatCode]['bel_code'] = $belCode;
+            } elseif ($belCode !== '') {
+                // A malformed value may mean ISTAT moved the columns, so leave a trace
+                Log::warning("geography:update: unexpected Belfiore code '{$belCode}' for municipality {$municipalityIstatCode}, skipped");
+            }
         }
 
         return [

@@ -263,6 +263,7 @@ final class GeographyUpdateService
                 ->create([
                     'istat_code' => $data['istat_code'],
                     'name' => $data['name'],
+                    'bel_code' => $data['bel_code'] ?? null,
                     'province_id' => $provinceId,
                 ]);
 
