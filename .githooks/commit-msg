@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Checks a commit message against the rules of CONTRIBUTING.md ("Commits and branches"): the hook of `git commit`, and
+# the check of every commit of a pull request in CI. It takes the file of the message, the way git passes it to the hook.
+# Not checked, since a script cannot tell: the imperative mood, one change per commit, the docs with the code.
+set -euo pipefail
+
+# the lists of CONTRIBUTING.md: a new type or scope goes in both places
+types='feat|fix|docs|test|refactor|perf|chore'
+scopes='import|update|cap|coordinates|models|commands|config|migrations|boost|tests|scripts|readme|docs|ci|deps|release'
+
+# the message as it will be committed: no comment lines of git, nothing below the scissors line of `commit -v`
+msg=$(sed -e '/^# ------------------------ >8 ------------------------$/,$d' -e '/^#/d' "$1")
+title=$(printf '%s\n' "$msg" | sed -n 1p)
+# a string, not an array: the bash 3.2 of macOS treats an empty array as unset under `set -u`
+errors=''
+fail() { errors+="commit message: $1"$'\n'; }
+
+# `git commit --fixup` and `--squash` are fine while working on a branch, not in a pull request
+if [[ $title =~ ^(fixup|squash|amend)!\  ]]; then
+  [[ -n ${CI:-} ]] && fail "a $(cut -d! -f1 <<<"$title")! commit is squashed before the pull request is merged"
+else
+  if [[ ! $title =~ ^($types)\(($scopes)\)(!)?:\ (.+)$ ]]; then
+    fail "the title is not 'type(scope): description' with a type and a scope of CONTRIBUTING.md: '$title'"
+  else
+    breaking=${BASH_REMATCH[3]}
+    description=${BASH_REMATCH[4]}
+    (( ${#description} > 50 )) && fail "the description is ${#description} characters, 50 at most: '$description'"
+    # code between backticks may have capitals (a file name, a key); the words of the description may not
+    [[ $(sed 's/`[^`]*`//g' <<<"$description") =~ [A-Z] ]] && fail "the description is not lowercase: '$description'"
+    [[ $description == *. ]] && fail "the description ends with a period"
+    has_breaking=$(grep -c '^BREAKING CHANGE: ' <<<"$msg" || true)
+    [[ -n $breaking && $has_breaking == 0 ]] && fail "a title with '!' needs 'BREAKING CHANGE:' on its own line in the body"
+    [[ -z $breaking && $has_breaking != 0 ]] && fail "a body with 'BREAKING CHANGE:' needs '!' after the scope in the title"
+  fi
+fi
+
+body=$(printf '%s\n' "$msg" | sed 1d)
+if [[ -n $(tr -d '[:space:]' <<<"$body") ]]; then
+  [[ -n $(printf '%s\n' "$msg" | sed -n 2p) ]] && fail "the title and the body are separated by a blank line"
+  long=$(awk 'length > 72 { print NR + 1 ": " $0 }' <<<"$body")
+  [[ -n $long ]] && fail "lines of the body over 72 characters:"$'\n'"$long"
+fi
+
+grep -qiE '^co-authored-by:' <<<"$msg" && fail "no Co-authored-by"
+grep -qiE 'generated (by|with)' <<<"$msg" && fail "no mention of the tool that wrote the commit"
+# only `#123`: a ticket key like `AB-12` cannot be told apart from `UTF-8` or `SHA-256`
+grep -qE '(^|[^[:alnum:]&])#[0-9]+' <<<"$msg" && fail "no issue numbers"
+perl -CSD -ne 'exit 1 if /[\p{Extended_Pictographic}\x{1F1E6}-\x{1F1FF}]/' <<<"$msg" || fail "no emoji"
+
+if [[ -n $errors ]]; then
+  printf '%s' "$errors" >&2
+  echo "the rules are in CONTRIBUTING.md, under \"Commits and branches\"" >&2
+  exit 1
+fi

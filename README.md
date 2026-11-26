@@ -500,10 +500,15 @@ Municipalities created by a merger after the boundaries were published are compu
 ## Contributing
 
 1. Fork the project
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Turn on the commit hook (`git config core.hooksPath .githooks`)
+3. Create a branch named `type/short-kebab-description` (`git checkout -b fix/bel-code-on-update`)
+4. Commit your changes with a `type(scope): description` message (`git commit -m 'fix(update): save bel_code on new municipalities'`)
+5. Run `composer test`, `composer analyse` and `composer format`
+6. Push the branch and open a Pull Request
+
+The commit title is lowercase, in the imperative mood, with a description of 50 characters at most. Every commit of a pull request is checked on GitHub, because pull requests are merged with a rebase.
+
+The full rules, with the lists of types and scopes, are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
