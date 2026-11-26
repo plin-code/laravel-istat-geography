@@ -192,6 +192,12 @@ php artisan geography:update --force
 
 All database operations are wrapped in a transaction. If any error occurs (and `--force` is not set), all changes are automatically rolled back.
 
+#### Upgrading from an older version
+
+- `geography:update` also syncs `bel_code` (the Belfiore/cadastral code), so the `extend_municipalities_with_postal_codes` migration must have been run. Without the column the update fails with an unknown column error and rolls back.
+- On a database where `bel_code` is still empty, the first update reports almost every municipality as modified (about 7,900 records), because it fills the missing codes. Later runs report only real changes.
+- A non-empty Belfiore code that does not match the expected format (one letter and three digits) is skipped and logged as a warning with the municipality ISTAT code.
+
 ## Configuration
 
 Publish the configuration file:

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use PlinCode\IstatGeography\Models\Geography\Municipality;
 use PlinCode\IstatGeography\Models\Geography\Province;
@@ -210,8 +211,6 @@ test('compare service returns no changes when data matches', function () {
         'istat_code' => '01',
     ]);
 
-    // The province code in DB should match what ISTAT data provides at index 14
-    // which is the municipality numeric code (010001) based on how GeographyImportService works
     $province = Province::create([
         'name' => 'Torino',
         'code' => 'TO',
@@ -350,6 +349,7 @@ test('compare service does not report a matching bel_code', function () {
 });
 
 test('compare service ignores a malformed bel_code in the CSV', function () {
+    Log::spy();
     createTorinoHierarchy('L219');
 
     mockIstatResponse(
@@ -360,9 +360,13 @@ test('compare service ignores a malformed bel_code in the CSV', function () {
     $result = app(GeographyCompareService::class)->compare();
 
     expect($result->municipalities->countModified())->toBe(0);
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->with("geography:update: unexpected Belfiore code 'ITC11' for municipality 010001, skipped");
 });
 
 test('compare service ignores an empty bel_code in the CSV', function () {
+    Log::spy();
     createTorinoHierarchy('L219');
 
     mockIstatResponse(
@@ -373,6 +377,7 @@ test('compare service ignores an empty bel_code in the CSV', function () {
     $result = app(GeographyCompareService::class)->compare();
 
     expect($result->municipalities->countModified())->toBe(0);
+    Log::shouldNotHaveReceived('warning');
 });
 
 function createSardiniaWithOlbia(?string $belCode = 'G015', bool $withSassari = true): array
