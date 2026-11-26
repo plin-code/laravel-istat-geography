@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PlinCode\IstatGeography\Services;
 
+use Illuminate\Support\Facades\Log;
 use PlinCode\IstatGeography\Models\Geography\Municipality;
 use PlinCode\IstatGeography\Models\Geography\Province;
 use PlinCode\IstatGeography\Models\Geography\Region;
@@ -47,7 +48,7 @@ final class GeographyUpdateService
 
         $addedProvinces = $this->createNewProvinces($comparison->provinces->new, $regionIdMap, $provinceIdMap);
 
-        $addedMunicipalities = $this->createNewMunicipalities($comparison->municipalities->new, $provinceIdMap);
+        $addedMunicipalities = $this->createNewMunicipalities($comparison->municipalities->new, $provinceIdMap, waitingForMovedCode: false);
 
         return [
             'added' => [
@@ -77,11 +78,23 @@ final class GeographyUpdateService
             $this->municipalityModel
         );
 
+        // New municipalities reusing a code that a moved municipality has just left
+        $addedMunicipalities = $this->createNewMunicipalities(
+            $comparison->municipalities->new,
+            $this->buildExistingProvinceIdMap(),
+            waitingForMovedCode: true
+        );
+
         return [
             'modified' => [
                 'regions' => $modifiedRegions,
                 'provinces' => $modifiedProvinces,
                 'municipalities' => $modifiedMunicipalities,
+            ],
+            'added' => [
+                'regions' => 0,
+                'provinces' => 0,
+                'municipalities' => $addedMunicipalities,
             ],
         ];
     }
@@ -117,6 +130,7 @@ final class GeographyUpdateService
     private function updateModifiedRecords(array $modifiedRecords, string $modelClass): int
     {
         $count = 0;
+        $provinceIdMap = null;
 
         foreach ($modifiedRecords as $data) {
             $id = $data['id'];
@@ -125,6 +139,18 @@ final class GeographyUpdateService
             $updateData = [];
             foreach ($changes as $field => $change) {
                 $updateData[$field] = $change['new'];
+            }
+
+            // The target province was created by this update, after the comparison
+            if (isset($data['province_istat_code'])) {
+                $provinceIdMap ??= $this->buildExistingProvinceIdMap();
+                $updateData['province_id'] = $provinceIdMap[$data['province_istat_code']] ?? null;
+                if ($updateData['province_id'] === null) {
+                    // Never apply a move partially: the record would keep a province it no longer belongs to
+                    Log::warning("[geography:update] Record {$id} not updated: province {$data['province_istat_code']} does not exist");
+
+                    continue;
+                }
             }
 
             if (empty($updateData)) {
@@ -246,11 +272,15 @@ final class GeographyUpdateService
         return $count;
     }
 
-    private function createNewMunicipalities(array $newMunicipalities, array $provinceIdMap): int
+    private function createNewMunicipalities(array $newMunicipalities, array $provinceIdMap, bool $waitingForMovedCode): int
     {
         $count = 0;
 
         foreach ($newMunicipalities as $data) {
+            if (($data['waits_for_moved_code'] ?? false) !== $waitingForMovedCode) {
+                continue;
+            }
+
             $provinceId = $data['province_id'] ?? null;
             if ($provinceId === null && isset($data['province_istat_code'])) {
                 $provinceId = $provinceIdMap[$data['province_istat_code']] ?? null;
@@ -263,6 +293,7 @@ final class GeographyUpdateService
                 ->create([
                     'istat_code' => $data['istat_code'],
                     'name' => $data['name'],
+                    'bel_code' => $data['bel_code'] ?? null,
                     'province_id' => $provinceId,
                 ]);
 

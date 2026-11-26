@@ -62,6 +62,8 @@ class IstatGeographyUpdateCommand extends Command
 
             $this->displaySuppressedRecords($comparison, $prefix);
 
+            $this->collectSkippedMoves($comparison);
+
             if (! $isDryRun) {
                 $result = DB::transaction(function () use ($updateService, $comparison, $isForce, $prefix) {
                     return $this->applyChanges($updateService, $comparison, $isForce, $prefix);
@@ -152,7 +154,8 @@ class IstatGeographyUpdateCommand extends Command
             $this->debugLog($prefix.'Starting to update modified records...');
             $modifyResult = $updateService->applyModifications($comparison);
             $modified = $modifyResult['modified'];
-            $this->advanceProgressBar($progressBar, $modified['regions'] + $modified['provinces'] + $modified['municipalities']);
+            $added['municipalities'] += $modifyResult['added']['municipalities'];
+            $this->advanceProgressBar($progressBar, $modified['regions'] + $modified['provinces'] + $modified['municipalities'] + $modifyResult['added']['municipalities']);
             $this->debugLog($prefix."Modified {$modified['regions']} regions, {$modified['provinces']} provinces, {$modified['municipalities']} municipalities");
         } catch (Exception $e) {
             $this->handleOperationError('updating records', $e, $isForce);
@@ -259,12 +262,14 @@ class IstatGeographyUpdateCommand extends Command
         }
 
         foreach ($comparison->municipalities->modified as $istatCode => $data) {
-            $this->line($prefix."Modified municipality (ISTAT: {$istatCode})");
-            $this->displayFieldChanges($data['changes'], $prefix);
+            $previousCode = $data['changes']['istat_code']['old'] ?? null;
+            $movedFrom = $previousCode !== null ? ", moved from {$previousCode}" : '';
+            $this->line($prefix."Modified municipality (ISTAT: {$istatCode}{$movedFrom})");
+            $this->displayFieldChanges($data['changes'], $prefix, $data['province_istat_code'] ?? null);
         }
     }
 
-    private function displayFieldChanges(array $changes, string $prefix): void
+    private function displayFieldChanges(array $changes, string $prefix, ?string $newProvinceIstatCode = null): void
     {
         if (! $this->output->isVeryVerbose()) {
             return;
@@ -272,8 +277,19 @@ class IstatGeographyUpdateCommand extends Command
 
         foreach ($changes as $field => $change) {
             $old = $change['old'] ?? 'null';
-            $new = $change['new'] ?? 'null';
+            $new = $change['new'] ?? ($field === 'province_id' && $newProvinceIstatCode !== null
+                ? "new province (ISTAT: {$newProvinceIstatCode})"
+                : 'null');
             $this->line($prefix."  {$field}: {$old} → {$new}");
+        }
+    }
+
+    private function collectSkippedMoves(ComparisonResult $comparison): void
+    {
+        foreach ($comparison->municipalities->skipped as $data) {
+            $this->warnings[] = $data['from'] === null
+                ? "New municipality {$data['name']} was not added: its ISTAT code {$data['to']} is still used by another record"
+                : "Municipality {$data['name']} kept its ISTAT code {$data['from']}: the new code {$data['to']} is already used by another record";
         }
     }
 

@@ -19,7 +19,7 @@ function mockEmptyIstatResponse(): void
 
 function createUpdateTestCsvHeader(): string
 {
-    return "Codice Regione;Codice dell'Unità territoriale sovracomunale (valida a fini statistici);Codice Provincia (Storico)(1);Progressivo del Comune (2);Codice Comune formato alfanumerico;Denominazione (Italiana e straniera);Codice Ripartizione Geografica;Ripartizione geografica;Denominazione regione;Denominazione dell'Unità territoriale sovracomunale (valida a fini statistici);Denominazione in italiano;Denominazione della Provincia;Flag Comune capoluogo di provincia/città metropolitana/libero consorzio;Sigla automobilistica;Codice Comune formato numerico;Codice Comune 110 (107) (3);Codice Comune 103 (1995) (3);Codice Catastale;Codice NUTS1 2010;Codice NUTS2 2010 (3);Codice NUTS3 2010;Codice NUTS1 2021;Codice NUTS2 2021 (3);Codice NUTS3 2021\n";
+    return "Codice Regione;Codice dell'Unità territoriale sovracomunale (valida a fini statistici);Codice Provincia (Storico)(1);Progressivo del Comune (2);Codice Comune formato alfanumerico;Denominazione (Italiana e straniera);Denominazione in italiano;Denominazione altra lingua;Codice Ripartizione Geografica;Ripartizione geografica;Denominazione Regione;Denominazione dell'Unità territoriale sovracomunale (valida a fini statistici);Tipologia di Unità territoriale sovracomunale;Flag Comune capoluogo di provincia/città metropolitana/libero consorzio;Sigla automobilistica;Codice Comune formato numerico;Codice Comune numerico con 110 province (dal 2010 al 2016);Codice Comune numerico con 107 province (dal 2006 al 2009);Codice Comune numerico con 103 province (dal 1995 al 2005);Codice Catastale del comune;Codice NUTS1 2021;Codice NUTS2 2021 (3);Codice NUTS3 2021;Codice NUTS1 2024;Codice NUTS2 2024 (3);Codice NUTS3 2024\n";
 }
 
 function createUpdateTestCsvRow(
@@ -29,9 +29,10 @@ function createUpdateTestCsvRow(
     string $municipalityName,
     string $regionName,
     string $provinceName,
-    string $provinceAbbr
+    string $provinceAbbr,
+    string $belCode = ''
 ): string {
-    return "{$regionCode};001;{$provinceCode};001;{$municipalityCode};{$municipalityName};1;Nord-ovest;{$regionName};{$provinceName};{$regionName};{$provinceName};0;{$provinceAbbr};{$municipalityCode};{$municipalityCode};{$municipalityCode};A074;ITC1;ITC1;ITC11;ITC1;ITC1;ITC11\n";
+    return "{$regionCode};201;{$provinceCode};001;{$municipalityCode};{$municipalityName};{$municipalityName};;1;Nord-ovest;{$regionName};{$provinceName};3;0;{$provinceAbbr};{$municipalityCode};{$municipalityCode};{$municipalityCode};{$municipalityCode};{$belCode};ITC;ITC1;ITC11;ITC;ITC1;ITC11\n";
 }
 
 test('update command is registered', function () {
@@ -197,7 +198,7 @@ test('update command populates all ISTAT fields for new records', function () {
     $province = Province::where('istat_code', '001')->first();
     expect($province->name)->toBe('Torino')
         ->and($province->istat_code)->toBe('001')
-        ->and($province->code)->toBe('010001')
+        ->and($province->code)->toBe('TO')
         ->and($province->region_id)->toBe($region->id);
 
     $municipality = Municipality::where('istat_code', '010001')->first();
@@ -214,7 +215,7 @@ test('update command updates only ISTAT fields preserving custom fields', functi
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001', // Must match position 14 in CSV which is municipalityCode
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -252,7 +253,7 @@ test('update command does not update unchanged records', function () {
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001', // Must match position 14 in CSV which is municipalityCode
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -282,7 +283,7 @@ test('update command dry-run lists modified records but does not apply changes',
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001', // Must match position 14 in CSV which is municipalityCode
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -316,7 +317,7 @@ test('update command shows modification details at verbosity -vv', function () {
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001', // Must match position 14 in CSV which is municipalityCode
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -347,7 +348,7 @@ test('update command soft-deletes records no longer present in ISTAT', function 
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -390,7 +391,7 @@ test('update command preserves foreign key relationships when soft-deleting', fu
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -423,7 +424,7 @@ test('update command does not cascade delete child records when suppressing pare
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -459,7 +460,7 @@ test('update command dry-run lists suppressed records but does not delete them',
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -498,7 +499,7 @@ test('update command shows count of suppressed records per entity in output', fu
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -543,7 +544,7 @@ test('update command shows suppressed record details at verbosity -v', function 
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -633,7 +634,7 @@ test('update command handles comparison errors gracefully', function () {
     ]);
     Province::create([
         'name' => 'Torino',
-        'code' => '010001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -715,7 +716,7 @@ test('update command with -vv shows list of modified records with change details
     ]);
     $province = Province::create([
         'name' => 'Torino',
-        'code' => '010001',
+        'code' => 'TO',
         'istat_code' => '001',
         'region_id' => $region->id,
     ]);
@@ -800,4 +801,154 @@ test('update command dry-run with -vvv shows debug messages with prefix', functi
         ->assertSuccessful()
         ->expectsOutputToContain('[DRY-RUN] Debug mode enabled')
         ->expectsOutputToContain('[DRY-RUN] Fetching CSV data from ISTAT server');
+});
+
+test('update command fills a missing bel_code on existing municipalities', function () {
+    $region = Region::create([
+        'name' => 'Piemonte',
+        'istat_code' => '01',
+    ]);
+    $province = Province::create([
+        'name' => 'Torino',
+        'code' => 'TO',
+        'istat_code' => '001',
+        'region_id' => $region->id,
+    ]);
+    $municipality = Municipality::create([
+        'name' => 'Torino',
+        'istat_code' => '010001',
+        'bel_code' => null,
+        'province_id' => $province->id,
+    ]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '010001', 'Torino', 'Piemonte', 'Torino', 'TO', 'L219'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('1 modified');
+
+    expect($municipality->fresh()->bel_code)->toBe('L219');
+});
+
+test('update command keeps the record of a municipality that moved to a new province', function () {
+    $region = Region::create(['name' => 'Sardegna', 'istat_code' => '20']);
+    $olbiaTempio = Province::create(['name' => 'Olbia-Tempio', 'code' => 'OT', 'istat_code' => '104', 'region_id' => $region->id]);
+    $olbia = Municipality::create(['name' => 'Olbia', 'istat_code' => '104017', 'bel_code' => 'G015', 'province_id' => $olbiaTempio->id]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('20', '090', '090047', 'Olbia', 'Sardegna', 'Sassari', 'SS', 'G015'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('1 added, 1 modified, 1 deleted');
+
+    $olbia = Municipality::withTrashed()->find($olbia->id);
+
+    expect($olbia->trashed())->toBeFalse()
+        ->and($olbia->istat_code)->toBe('090047')
+        ->and($olbia->province->istat_code)->toBe('090')
+        ->and(Municipality::withTrashed()->count())->toBe(1)
+        ->and($olbiaTempio->fresh()->trashed())->toBeTrue();
+});
+
+test('update command dry run shows a municipality move', function () {
+    $region = Region::create(['name' => 'Sardegna', 'istat_code' => '20']);
+    $olbiaTempio = Province::create(['name' => 'Olbia-Tempio', 'code' => 'OT', 'istat_code' => '104', 'region_id' => $region->id]);
+    $olbia = Municipality::create(['name' => 'Olbia', 'istat_code' => '104017', 'bel_code' => 'G015', 'province_id' => $olbiaTempio->id]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('20', '090', '090047', 'Olbia', 'Sardegna', 'Sassari', 'SS', 'G015'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update', ['--dry-run' => true, '-vv' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('Modified municipality (ISTAT: 090047, moved from 104017)')
+        ->expectsOutputToContain('istat_code: 104017 → 090047')
+        ->expectsOutputToContain('province_id: '.$olbiaTempio->id.' → new province (ISTAT: 090)');
+
+    expect($olbia->fresh()->istat_code)->toBe('104017');
+});
+
+test('update command warns about a move blocked by a soft deleted municipality', function () {
+    $region = Region::create(['name' => 'Sardegna', 'istat_code' => '20']);
+    $sassari = Province::create(['name' => 'Sassari', 'code' => 'SS', 'istat_code' => '090', 'region_id' => $region->id]);
+    $olbiaTempio = Province::create(['name' => 'Olbia-Tempio', 'code' => 'OT', 'istat_code' => '104', 'region_id' => $region->id]);
+    $olbia = Municipality::create(['name' => 'Olbia', 'istat_code' => '104017', 'bel_code' => 'G015', 'province_id' => $olbiaTempio->id]);
+    Municipality::create(['name' => 'Old Olbia', 'istat_code' => '090047', 'province_id' => $sassari->id])->delete();
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('20', '090', '090047', 'Olbia', 'Sardegna', 'Sassari', 'SS', 'G015'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('Municipality Olbia kept its ISTAT code 104017: the new code 090047 is already used by another record');
+
+    expect($olbia->fresh()->trashed())->toBeFalse()
+        ->and($olbia->fresh()->istat_code)->toBe('104017')
+        ->and($olbia->fresh()->province_id)->toBe($sassari->id);
+});
+
+test('update command creates a new municipality reusing the code of a moved one in the same run', function () {
+    $region = Region::create(['name' => 'Sardegna', 'istat_code' => '20']);
+    $olbiaTempio = Province::create(['name' => 'Olbia-Tempio', 'code' => 'OT', 'istat_code' => '104', 'region_id' => $region->id]);
+    $olbia = Municipality::create(['name' => 'Olbia', 'istat_code' => '104017', 'bel_code' => 'G015', 'province_id' => $olbiaTempio->id]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('20', '090', '090047', 'Olbia', 'Sardegna', 'Sassari', 'SS', 'G015').
+            createUpdateTestCsvRow('20', '104', '104017', 'Newtown', 'Sardegna', 'Olbia-Tempio', 'OT', 'H111'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('2 added, 1 modified, 0 deleted');
+
+    expect($olbia->fresh()->istat_code)->toBe('090047')
+        ->and(Municipality::where('istat_code', '104017')->value('name'))->toBe('Newtown');
+});
+
+test('update command applies chained moves in a single run', function () {
+    $region = Region::create(['name' => 'Piemonte', 'istat_code' => '01']);
+    $province = Province::create(['name' => 'Torino', 'code' => 'TO', 'istat_code' => '001', 'region_id' => $region->id]);
+    $first = Municipality::create(['name' => 'First', 'istat_code' => '001002', 'bel_code' => 'A001', 'province_id' => $province->id]);
+    $second = Municipality::create(['name' => 'Second', 'istat_code' => '001003', 'bel_code' => 'A002', 'province_id' => $province->id]);
+
+    Http::fake([
+        '*' => Http::response(
+            createUpdateTestCsvHeader().
+            createUpdateTestCsvRow('01', '001', '001002', 'Second', 'Piemonte', 'Torino', 'TO', 'A002').
+            createUpdateTestCsvRow('01', '001', '001004', 'First', 'Piemonte', 'Torino', 'TO', 'A001'),
+            200
+        ),
+    ]);
+
+    $this->artisan('geography:update')
+        ->assertSuccessful()
+        ->expectsOutputToContain('0 added, 2 modified, 0 deleted');
+
+    expect($first->fresh()->istat_code)->toBe('001004')
+        ->and($second->fresh()->istat_code)->toBe('001002');
 });
