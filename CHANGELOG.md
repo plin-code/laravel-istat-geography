@@ -2,6 +2,19 @@
 
 All notable changes to `laravel-istat-geography` will be documented in this file.
 
+## v1.5.1 - bel_code on geography:update - 2026-11-26
+
+### Fixes
+
+- `geography:update` now saves `bel_code` (the Belfiore/cadastral code) on new municipalities and fills it on existing ones. Before, municipalities created by an update had no code and were skipped by the CAP import. (#27)
+
+### Upgrading
+
+- `geography:update` now needs the `bel_code` column: run the `extend_municipalities_with_postal_codes` migration first.
+- The first update on a database where `bel_code` is empty reports almost every municipality as modified (about 7,900 records). Later runs report only real changes.
+
+Thanks to @rinodrummer for the fix.
+
 ## v1.5.0 - Boost guidelines and config fixes - 2026-10-02
 
 ### 🤖 Boost guidelines and config fixes
@@ -65,6 +78,7 @@ php artisan geography:import --cap --coordinates
 php artisan geography:import --coordinates-only
 
 
+
 ```
 #### Data source
 
@@ -99,9 +113,11 @@ Set the connection via the new config key or env variable:
 
 
 
+
 ```
 ```dotenv
 ISTAT_DB_CONNECTION=geography
+
 
 
 
@@ -144,6 +160,7 @@ php artisan geography:import --cap --cap-file=cap-dataset.json
 
 # Update only CAP on existing data
 php artisan geography:import --cap-only --cap-file=cap-dataset.json
+
 
 
 
@@ -235,6 +252,7 @@ composer require plin-code/laravel-istat-geography
 
 
 
+
 ```
 #### 🔧 Configuration
 
@@ -252,6 +270,7 @@ php artisan vendor:publish --tag="istat-geography-config"
 
 
 
+
 ```
 #### 📦 Usage
 
@@ -259,6 +278,7 @@ Import geographical data:
 
 ```bash
 php artisan istat:geography:import
+
 
 
 
